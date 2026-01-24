@@ -117,10 +117,9 @@ Public Class GridForm
             ReDim c.Rows(Grid.SelectedRows.Count - 1)
 
             For i As Integer = 0 To Grid.SelectedRows.Count - 1
-                If Grid.SelectedRows(i).DataBoundItem = Nothing Then
-                    Continue For
+                If Grid.SelectedRows(i).DataBoundItem IsNot Nothing Then
+                    c.Rows(i) = DirectCast(Grid.SelectedRows(i).DataBoundItem, DataRowView).Row
                 End If
-                c.Rows(i) = DirectCast(Grid.SelectedRows(i).DataBoundItem, DataRowView).Row
             Next
 
             Grid.DoDragDrop(c, DragDropEffects.Copy)
