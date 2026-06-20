@@ -80,6 +80,17 @@ Public Module Utility
         RandomItem = 1073741824
     End Enum
 
+    ''' <summary>
+    ''' Normalises a data path to the current OS directory separator. Table file names are
+    ''' stored with Windows '\' separators (e.g. "Items\Merges.xml"); this rewrites those (and
+    ''' any '/') to the platform separator so the path resolves on non-Windows filesystems too.
+    ''' On Windows it is a no-op ('\' -> '\'), so it cannot change existing Windows behaviour.
+    ''' </summary>
+    Public Function NormalizePath(ByVal path As String) As String
+        If path Is Nothing Then Return Nothing
+        Return path.Replace("/"c, IO.Path.DirectorySeparatorChar).Replace("\"c, IO.Path.DirectorySeparatorChar)
+    End Function
+
     <Extension()>
     Friend Function GetTableHandler(ByVal table As DataTable) As DefaultTable
         Dim val As DefaultTable = Nothing

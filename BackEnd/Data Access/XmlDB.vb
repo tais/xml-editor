@@ -236,7 +236,7 @@ Public Class XmlDB
             ' RoWa21: If we have a language specifix XML file, load from specific location if file exists
             If IsLanguageSpecificFile(fileName) Then
                 Dim filePath As String = _dataManager.GetLanguageSpecificTableDirectory(fileName)
-                If System.IO.File.Exists(filePath & fileName) = False Then
+                If System.IO.File.Exists(NormalizePath(filePath & fileName)) = False Then
                     loadData = False
                 End If
             End If
@@ -277,7 +277,7 @@ Public Class XmlDB
             If IsLanguageSpecificFile(fileName) Then
                 filePath = _dataManager.GetLanguageSpecificTableDirectory(fileName) & fileName
 
-                If Not System.IO.File.Exists(filePath) Then
+                If Not System.IO.File.Exists(NormalizePath(filePath)) Then
                     writeData = False
                 End If
             End If
