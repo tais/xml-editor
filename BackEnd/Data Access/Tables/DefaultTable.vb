@@ -24,7 +24,8 @@ Public Class DefaultTable
             filePath = _dm.GetLanguageSpecificTableDirectory(fileName) & fileName
         End If
 
-        Return filePath
+        ' Normalise '\' (how file names are stored) to the OS separator. No-op on Windows.
+        Return NormalizePath(filePath)
     End Function
 
     Public Overridable Sub LoadData()
