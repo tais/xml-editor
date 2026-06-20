@@ -34,11 +34,12 @@ Namespace GUI
         Public Shared Sub LoadSettings()
             _settingsTable = MakeSettingsTable()
             Try
-                _settingsTable.ReadXml("XMLEditorSettings.xml")
-            Catch ex As FileNotFoundException
-                ProjectData.SetProjectError(ex)
-                Dim exception As FileNotFoundException = ex
-                ProjectData.ClearProjectError()
+                If File.Exists(SettingsFileName) Then _settingsTable.ReadXml(SettingsFileName)
+            Catch ex As Exception
+                ' Settings are non-critical UI state - a missing OR corrupt file just means
+                ' defaults. Don't let it abort startup (previously only FileNotFound was caught,
+                ' so a malformed XMLEditorSettings.xml crashed the editor on launch).
+                ErrorHandler.LogWarning("Could not read " & SettingsFileName & ": " & ex.Message)
             End Try
         End Sub
 
@@ -52,7 +53,12 @@ Namespace GUI
         End Function
 
         Public Shared Sub SaveSettings()
-            _settingsTable.WriteXml("XMLEditorSettings.xml")
+            Try
+                _settingsTable.WriteXml(SettingsFileName)
+            Catch ex As Exception
+                ' Never let a settings-save failure (e.g. read-only dir) crash the app on exit.
+                ErrorHandler.LogWarning("Could not save " & SettingsFileName & ": " & ex.Message)
+            End Try
         End Sub
 
         <Obsolete()> _

@@ -126,13 +126,22 @@ Public Class MainForm
         Splash.UpdateLoadingText(DisplayText.ReloadingData)
         Me.Hide()
         Application.DoEvents()
-        For i As Integer = 0 To GameDataCount - 1
-            Splash.UpdateCurrentDirectory(GameData(i).Name)
-            GameData(i).LoadData()
-        Next
-        System.Windows.Forms.Cursor.Current = Cursors.Arrow
-        Splash.Hide()
-        Me.Show()
+        Try
+            For i As Integer = 0 To GameDataCount - 1
+                Splash.UpdateCurrentDirectory(GameData(i).Name)
+                GameData(i).LoadData()
+            Next
+        Catch ex As DataLoadException
+            ErrorHandler.ShowError(ex.Message, "Error Reloading Data", MessageBoxIcon.Exclamation)
+        Catch ex As Exception
+            ErrorHandler.ShowError("An error occurred while reloading the data.", ex)
+        Finally
+            ' Always bring the main window back, even if the reload failed, so it can't be left
+            ' hidden behind the splash with the app effectively dead.
+            System.Windows.Forms.Cursor.Current = Cursors.Arrow
+            Splash.Hide()
+            Me.Show()
+        End Try
     End Sub
 
     Friend Function FormOpen(ByVal formText As String) As Boolean
@@ -703,27 +712,35 @@ Public Class MainForm
         System.Windows.Forms.Cursor.Current = Cursors.WaitCursor
         LoadingForm.Show(True)
         Application.DoEvents()
-        If saveAll Then
-            For i As Integer = 0 To GameDataCount - 1
-                LoadingForm.SetDataName(GameData(i).Name)
-                GameData(i).SaveData()
-            Next
-        Else
-            LoadingForm.SetDataName(_activeDataSet.Name)
-            _activeDataSet.SaveData()
-        End If
+        Try
+            If saveAll Then
+                For i As Integer = 0 To GameDataCount - 1
+                    LoadingForm.SetDataName(GameData(i).Name)
+                    GameData(i).SaveData()
+                Next
+            Else
+                LoadingForm.SetDataName(_activeDataSet.Name)
+                _activeDataSet.SaveData()
+            End If
 
-        'conditional to ensure that there's no accidental loading of working data when some of the data sets aren't up to date
-        If saveAll OrElse GameDataCount = 1 Then
-            With My.Settings
-                .Last_Version_Major = My.Application.Info.Version.Major
-                .Last_Version_Minor = My.Application.Info.Version.Minor
-                .Save()
-            End With
-        End If
-
-        System.Windows.Forms.Cursor.Current = Cursors.Arrow
-        LoadingForm.Close()
+            'conditional to ensure that there's no accidental loading of working data when some of the data sets aren't up to date
+            If saveAll OrElse GameDataCount = 1 Then
+                With My.Settings
+                    .Last_Version_Major = My.Application.Info.Version.Major
+                    .Last_Version_Minor = My.Application.Info.Version.Minor
+                    .Save()
+                End With
+            End If
+        Catch ex As DataLoadException
+            ErrorHandler.ShowError(ex.Message, "Error Saving Data", MessageBoxIcon.Exclamation)
+        Catch ex As Exception
+            ErrorHandler.ShowError("An error occurred while saving.", ex)
+        Finally
+            ' Always restore the cursor and close the progress form, even if a save throws,
+            ' so the editor can't get stuck behind a frozen "saving" dialog.
+            System.Windows.Forms.Cursor.Current = Cursors.Arrow
+            LoadingForm.Close()
+        End Try
     End Sub
 
     Private Sub DrugTypesToolStripMenuItem_Click(sender As System.Object, e As System.EventArgs) Handles DrugTypesToolStripMenuItem.Click
