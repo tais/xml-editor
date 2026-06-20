@@ -57,7 +57,7 @@ Public Class MercGearDataForm
         ' position and read the wrong merc (or threw IndexOutOfRange) whenever an ID didn't equal
         ' its row position.
         If _view Is Nothing OrElse _view.Count = 0 Then Return
-        Dim r As DataRowView = _view(0)
+        Dim r As System.Data.DataRowView = _view(0)
         GearKitPage1.Text = If(r(3).ToString().Length = 0, "GEARKIT 1", r(3).ToString())     '3 is mGearkitName1
         GearKitPage2.Text = If(r(68).ToString().Length = 0, "GEARKIT 2", r(68).ToString())    '68 is mGearkitName2
         GearKitPage3.Text = If(r(133).ToString().Length = 0, "GEARKIT 3", r(133).ToString())  '133 is mGearkitName3
