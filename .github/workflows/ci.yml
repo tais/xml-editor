@@ -1,0 +1,74 @@
+name: CI
+
+# Builds + publishes the app on every push/PR so breakage is caught early and a
+# testable Windows build is available to download without cutting a release.
+# The app is WinForms on a net*-windows TFM, so it can ONLY build on Windows.
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.vbproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore XMLEditor_VS2010.sln
+
+      # Build the whole solution (fast fail on compile errors). Release config
+      # avoids the Debug-only OutputPath the project historically carried.
+      - name: Build (Release)
+        run: dotnet build XMLEditor_VS2010.sln --configuration Release --no-restore
+
+      # Run the exact same publish the Release workflow uses, so the
+      # self-contained single-file path is proven on every push/PR.
+      - name: Publish (win-x64, self-contained, single file)
+        run: >
+          dotnet publish "GUI/GUI.vbproj"
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          --output publish/win-x64
+
+      - name: Stage sample config alongside the exe
+        shell: pwsh
+        run: |
+          if (Test-Path 'GUI/XMLEditorInit.xml') {
+            Copy-Item 'GUI/XMLEditorInit.xml' 'publish/win-x64/XMLEditorInit.sample.xml'
+          }
+
+      # Makes a runnable Windows build downloadable from the run's "Artifacts"
+      # section — handy for testing a PR before merging/tagging.
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xml-editor-win-x64
+          path: publish/win-x64/
+          retention-days: 14
+          if-no-files-found: error
