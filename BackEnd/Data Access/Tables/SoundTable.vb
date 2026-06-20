@@ -30,6 +30,7 @@ Public Class SoundTable
         Dim fileName As String = _table.GetStringProperty(TableProperty.FileName)
         Dim filePath As String = GetFilePath(fileName)
 
+        BackupFile(filePath)
         Dim xw As New Xml.XmlTextWriter(filePath, Text.Encoding.UTF8)
         xw.WriteStartElement(_table.GetStringProperty(TableProperty.DataSetName))
         xw.WriteString(vbLf)

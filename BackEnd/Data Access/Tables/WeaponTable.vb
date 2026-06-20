@@ -26,6 +26,7 @@ Public Class WeaponTable
 
         Dim fileName As String = _table.GetStringProperty(TableProperty.FileName)
         Dim filePath As String = GetFilePath(fileName)
+        BackupFile(filePath)
         doc.Save(filePath)
 
         _table.AcceptChanges()
