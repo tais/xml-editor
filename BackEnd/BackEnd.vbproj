@@ -7,12 +7,8 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DocumentationFile>BackEnd.xml</DocumentationFile>
-  </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DefineDebug>false</DefineDebug>
-    <DocumentationFile>BackEnd.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Import Include="System.Windows.Forms" />
@@ -44,11 +40,11 @@
     <Folder Include="Resources\" />
   </ItemGroup>
   <ItemGroup>
-    <!-- TODO(followup): Microsoft.Windows.Compatibility is a heavyweight meta-package;
-         the only API it provides that is actually used here is System.Diagnostics.EventLog
-         (ErrorHandler.vb). It can be replaced with the targeted System.Diagnostics.EventLog
-         package, but that swap needs a Windows build to verify, so it is left for later. -->
-    <PackageReference Include="Microsoft.Windows.Compatibility" Version="9.0.0" />
+    <!-- EventLog (ErrorHandler.vb) is the only Windows-compat API actually used; everything
+         else (System.Drawing, WinForms) comes from the Windows Desktop SDK via UseWindowsForms.
+         Using the targeted package instead of the huge Microsoft.Windows.Compatibility meta-
+         package keeps the published build small. -->
+    <PackageReference Include="System.Diagnostics.EventLog" Version="9.0.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.0" />
   </ItemGroup>
 </Project>

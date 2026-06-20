@@ -56,9 +56,21 @@ jobs:
           "version_nov=$nov" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           Write-Host "Building release $v (assembly version $nov)"
 
-      # Self-contained single-file => the tester needs NO .NET install on their
-      # Windows box. No trimming (WinForms relies on reflection).
-      - name: Publish (win-x64, self-contained, single file)
+      # Two single-file builds (no trimming - WinForms relies on reflection):
+      #  - framework-dependent: small, needs the .NET 9 Desktop Runtime installed.
+      #  - self-contained: large, bundles the runtime, no install needed.
+      - name: Publish framework-dependent (small, needs .NET Desktop Runtime)
+        run: >
+          dotnet publish "GUI/GUI.vbproj"
+          --configuration Release
+          --runtime win-x64
+          --self-contained false
+          -p:PublishSingleFile=true
+          -p:DebugType=embedded
+          -p:Version=${{ steps.ver.outputs.version_nov }}
+          --output publish/framework-dependent
+
+      - name: Publish self-contained (large, no install needed)
         run: >
           dotnet publish "GUI/GUI.vbproj"
           --configuration Release
@@ -66,23 +78,23 @@ jobs:
           --self-contained true
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=embedded
           -p:Version=${{ steps.ver.outputs.version_nov }}
-          --output publish/win-x64
+          --output publish/self-contained
 
-      - name: Stage sample config alongside the exe
+      - name: Stage sample config + package both zips
         shell: pwsh
         run: |
-          if (Test-Path 'GUI/XMLEditorInit.xml') {
-            Copy-Item 'GUI/XMLEditorInit.xml' 'publish/win-x64/XMLEditorInit.sample.xml'
+          $v = "${{ steps.ver.outputs.version }}"
+          foreach ($flavour in 'framework-dependent', 'self-contained') {
+            if (Test-Path 'GUI/XMLEditorInit.xml') {
+              Copy-Item 'GUI/XMLEditorInit.xml' "publish/$flavour/XMLEditorInit.sample.xml"
+            }
+            Write-Host "== $flavour =="
+            Get-ChildItem "publish/$flavour" | Select-Object Name, Length | Format-Table -AutoSize
           }
-
-      - name: Package zip
-        id: zip
-        shell: pwsh
-        run: |
-          $name = "JA2-XML-Editor-${{ steps.ver.outputs.version }}-win-x64.zip"
-          Compress-Archive -Path 'publish/win-x64/*' -DestinationPath $name -Force
-          "asset=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Compress-Archive -Path 'publish/framework-dependent/*' -DestinationPath "JA2-XML-Editor-$v-win-x64-framework-dependent.zip" -Force
+          Compress-Archive -Path 'publish/self-contained/*'      -DestinationPath "JA2-XML-Editor-$v-win-x64-self-contained.zip"      -Force
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -90,10 +102,15 @@ jobs:
           tag_name: ${{ steps.ver.outputs.version }}
           name: JA2 XML Editor ${{ steps.ver.outputs.version }}
           generate_release_notes: true
-          files: ${{ steps.zip.outputs.asset }}
+          files: |
+            JA2-XML-Editor-${{ steps.ver.outputs.version }}-win-x64-framework-dependent.zip
+            JA2-XML-Editor-${{ steps.ver.outputs.version }}-win-x64-self-contained.zip
           body: |
-            Windows x64 build of the JA2 1.13 XML Editor.
+            Windows x64 builds of the JA2 1.13 XML Editor. Pick one:
 
-            **Self-contained** — no .NET runtime install required. Unzip and run `XML Editor.exe`
-            from your game's tools directory next to your `XMLEditorInit.xml`
-            (a sample `XMLEditorInit.sample.xml` is included).
+            - **framework-dependent** (`…-framework-dependent.zip`, ~2 MB) — small; requires the
+              [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0) installed.
+            - **self-contained** (`…-self-contained.zip`, ~50 MB) — larger, but runs with no .NET install.
+
+            Unzip and run `XML Editor.exe` from your game's tools directory next to your
+            `XMLEditorInit.xml` (a sample `XMLEditorInit.sample.xml` is included).
