@@ -28,6 +28,21 @@ Public Class DefaultTable
         Return NormalizePath(filePath)
     End Function
 
+    ''' <summary>
+    ''' Copies an existing file to a sibling ".bak" before it is overwritten on save, so a crash,
+    ''' full disk, or bad write leaves a recoverable copy of the last-saved version (saves overwrite
+    ''' the real game files in place). Best-effort: a backup failure must never block the save.
+    ''' </summary>
+    Protected Shared Sub BackupFile(ByVal filePath As String)
+        Try
+            If IO.File.Exists(filePath) Then
+                IO.File.Copy(filePath, filePath & ".bak", True)
+            End If
+        Catch
+            ' Best-effort only - never let a backup failure stop the user from saving.
+        End Try
+    End Sub
+
     Public Overridable Sub LoadData()
         Const Temp As String = "temp"
 
@@ -142,6 +157,7 @@ Public Class DefaultTable
             Dim fileName = table.GetStringProperty(TableProperty.FileName)
             Dim filePath As String = GetFilePath(fileName)
 
+            BackupFile(filePath)
             WriteXml(table, filePath)
         Else
             Dim t As DataTable = table.Copy
@@ -150,6 +166,7 @@ Public Class DefaultTable
             Dim fileName As String = t.GetStringProperty(TableProperty.FileName)
             Dim filePath As String = GetFilePath(fileName)
 
+            BackupFile(filePath)
             WriteXml(t, filePath)
             t.Dispose()
         End If
