@@ -65,7 +65,11 @@ Public Class XmlDB
             If handlerName Is Nothing Then
                 handler = New DefaultTable(t, _dataManager)
             Else
-                Dim obj As Object = Activator.CreateInstance(Type.GetType("BackEnd." & handlerName), t, _dataManager)
+                Dim handlerType As Type = Type.GetType("BackEnd." & handlerName)
+                If handlerType Is Nothing Then
+                    Throw New DataLoadException("Internal error: unknown table handler '" & handlerName & "' configured for table '" & t.TableName & "'.")
+                End If
+                Dim obj As Object = Activator.CreateInstance(handlerType, t, _dataManager)
                 handler = DirectCast(obj, DefaultTable)
             End If
             If t.ExtendedProperties.Contains(TableProperty.TableHandler) Then t.ExtendedProperties.Remove(TableProperty.TableHandler)
@@ -111,7 +115,11 @@ Public Class XmlDB
             If handlerName Is Nothing Then
                 handler = New DefaultTable(t, _dataManager)
             Else
-                Dim obj As Object = Activator.CreateInstance(Type.GetType("BackEnd." & handlerName), t, _dataManager)
+                Dim handlerType As Type = Type.GetType("BackEnd." & handlerName)
+                If handlerType Is Nothing Then
+                    Throw New DataLoadException("Internal error: unknown table handler '" & handlerName & "' configured for table '" & t.TableName & "'.")
+                End If
+                Dim obj As Object = Activator.CreateInstance(handlerType, t, _dataManager)
                 handler = DirectCast(obj, DefaultTable)
             End If
             If t.ExtendedProperties.Contains(TableProperty.TableHandler) Then t.ExtendedProperties.Remove(TableProperty.TableHandler)
@@ -157,22 +165,27 @@ Public Class XmlDB
         Try
             ds.EnforceConstraints = True
         Catch ex As ConstraintException
-            ErrorHandler.ShowError("One or more of your files contain invalid data.  Please fix the data and restart the editor.", "Error Loading Files", ex)
+            ' Aggregate every invalid row across every table into ONE message that names the
+            ' file and the offending row's id, instead of a stack of generic dialogs.
+            Dim errStr As New Text.StringBuilder("Your data contains invalid values that prevent it from loading:" & vbCrLf)
             For Each t As DataTable In ds.Tables
                 If t.HasErrors Then
-                    Dim errStr As New Text.StringBuilder("Details:" & vbCrLf & vbCrLf)
                     Dim fileName As String = t.GetStringProperty(TableProperty.FileName)
-                    If Not String.IsNullOrEmpty(fileName) Then
-                        errStr.Append("File: " & fileName & vbCrLf)
-                    Else
-                        errStr.Append("Table: " & t.TableName & vbCrLf)
-                    End If
-                    For i As Integer = 0 To t.GetErrors.GetUpperBound(0)
-                        errStr.Append(vbCrLf & t.GetErrors(i).RowError)
+                    errStr.Append(vbCrLf & If(String.IsNullOrEmpty(fileName), "Table: " & t.TableName, "File: " & fileName) & vbCrLf)
+                    For Each badRow As DataRow In t.GetErrors()
+                        Dim pk As String = ""
+                        If t.PrimaryKey IsNot Nothing AndAlso t.PrimaryKey.Length > 0 Then
+                            Try
+                                pk = " (id " & badRow(t.PrimaryKey(0)).ToString() & ")"
+                            Catch
+                            End Try
+                        End If
+                        errStr.Append("   Row" & pk & ": " & badRow.RowError & vbCrLf)
                     Next
-                    ErrorHandler.ShowError(errStr.ToString, "Error Loading Files", MessageBoxIcon.Exclamation)
                 End If
             Next
+            errStr.Append(vbCrLf & "Please correct the data listed above and restart the editor.")
+            ErrorHandler.ShowError(errStr.ToString(), "Error Loading Data", MessageBoxIcon.Exclamation)
             ErrorHandler.TriggerFatalError()
         End Try
         ds.EndInit()
@@ -182,9 +195,27 @@ Public Class XmlDB
         RaiseEvent BeforeLoadAll(Me)
         ds.Clear()
         BeginInit()
+        ' Collect per-file failures instead of aborting on the first one, so the user sees
+        ' every broken file at once, each named, instead of a single cryptic message.
+        Dim loadErrors As New List(Of String)
         For Each t As DataTable In ds.Tables
-            LoadData(t)
+            Try
+                LoadData(t)
+            Catch ex As DataLoadException
+                ' already phrased for the user (e.g. wrong root element)
+                loadErrors.Add(ex.Message)
+            Catch ex As Exception
+                loadErrors.Add(ErrorHandler.DescribeLoadError(ex, t.GetStringProperty(TableProperty.FileName)))
+            End Try
         Next
+        If loadErrors.Count > 0 Then
+            Dim msg As New Text.StringBuilder("The editor could not load the following data file(s):" & vbCrLf)
+            For Each e As String In loadErrors
+                msg.Append(vbCrLf & " - " & e & vbCrLf)
+            Next
+            msg.Append(vbCrLf & "Please correct the file(s) listed above and restart the editor.")
+            Throw New DataLoadException(msg.ToString())
+        End If
         EndInit()
         RaiseEvent AfterLoadAll(Me)
     End Sub

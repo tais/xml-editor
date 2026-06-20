@@ -75,6 +75,11 @@ Module Main
             Application.Run(MainWindow)
 
             SettingsUtility.SaveSettings()
+        Catch ex As DataLoadException
+            ' A data/config problem whose message is already written for the user - show it
+            ' plainly (with the file name / location) instead of the generic "report this bug"
+            ' dialog, since it is almost always something the user can fix in their own files.
+            ErrorHandler.ShowError(ex.Message, "Unable to Load Data", MessageBoxIcon.Exclamation)
         Catch ex As Exception
             ErrorHandler.ShowError(DisplayText.UnhandledError, ex)
         End Try
