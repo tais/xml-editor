@@ -1,0 +1,24 @@
+<Project>
+
+  <!-- Shared build settings for every project in the repo (single source of truth),
+       so TargetFramework / Option* / analyzer settings aren't duplicated per project. -->
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows7.0</TargetFramework>
+
+    <OptionCompare>Text</OptionCompare>
+    <OptionExplicit>On</OptionExplicit>
+    <OptionInfer>On</OptionInfer>
+    <!-- NOTE: Option Strict is deliberately left Off for now. Turning it On surfaces
+         many pre-existing implicit conversions/late-bound calls and should be done as
+         its own dedicated, reviewed pass (it is the single biggest lever on the
+         "cryptic runtime errors" problem, but too large to fold in here). -->
+
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- VB warnings this project has historically suppressed, defined once here
+         instead of being duplicated across every Debug/Release PropertyGroup. -->
+    <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42353,42354,42355</NoWarn>
+  </PropertyGroup>
+
+</Project>
