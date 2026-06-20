@@ -135,11 +135,11 @@ Public Class ControlTable
         For i = 0 To view.Count - 1
             child1 = False
             child2 = False
-            If Not table.Rows(i).RowState = DataRowState.Deleted Then
+            If Not view(i).Row.RowState = DataRowState.Deleted Then
                 xw.WriteString(vbTab)
                 xw.WriteStartElement(table.TableName)
                 xw.WriteString(vbLf)
-                For x = 0 To table.Rows(i).ItemArray.Length - 1
+                For x = 0 To view(i).Row.ItemArray.Length - 1
                     Dim c As DataColumn = table.Columns(x)
                     If c.ColumnName = "REORDERMINIMUM" Then
                         xw.WriteString(vbTab)

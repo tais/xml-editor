@@ -33,11 +33,11 @@ Public Class InventoryTable
             xw.WriteWhitespace(vbLf)
         End If
         For i = 0 To view.Count - 1
-            If Not table.Rows(i).RowState = DataRowState.Deleted Then
+            If Not view(i).Row.RowState = DataRowState.Deleted Then
                 xw.WriteString(vbTab)
                 xw.WriteStartElement(table.TableName)
                 xw.WriteString(vbLf)
-                For x = 0 To table.Rows(i).ItemArray.Length - 1
+                For x = 0 To view(i).Row.ItemArray.Length - 1
                     Dim c As DataColumn = table.Columns(x)
                     If Not trim OrElse (i = 0 OrElse c Is table.PrimaryKey(0) OrElse ((c.DataType.Equals(GetType(Boolean)) OrElse c.DataType.Equals(GetType(Decimal)) OrElse c.DataType.Equals(GetType(ULong)) OrElse c.DataType.Equals(GetType(Integer)) OrElse c.DataType.Equals(GetType(Long))) AndAlso view(i)(c.ColumnName) <> 0) _
                         OrElse (c.DataType.Equals(GetType(String)) AndAlso view(i)(c.ColumnName) <> "")) Then

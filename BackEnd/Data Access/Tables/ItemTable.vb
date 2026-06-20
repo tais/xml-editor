@@ -426,13 +426,17 @@ Public Class ItemTable
         xw.WriteStartElement(table.ExtendedProperties("DataSetName").ToString)
         xw.WriteWhitespace(vbLf)
         For i = 0 To view.Count - 1
-            If Not table.Rows(i).RowState = DataRowState.Deleted Then
+            ' Use the SORTED view's row, not the physical Rows(i): the loop is indexed by the
+            ' sorted view, so checking table.Rows(i).RowState read a different row once item IDs
+            ' weren't physically contiguous (e.g. after edits + auto-added "nothing" items), which
+            ' could skip a valid item and drop it from the saved file.
+            If Not view(i).Row.RowState = DataRowState.Deleted Then
                 indent = True
                 da = 0
                 xw.WriteString(vbTab)
                 xw.WriteStartElement(table.TableName)
                 xw.WriteString(vbLf)
-                For x = 0 To table.Rows(i).ItemArray.Length - 1
+                For x = 0 To view(i).Row.ItemArray.Length - 1
                     Dim c As DataColumn = table.Columns(x)
                     Dim xmlColName As String = c.GetStringProperty(ColumnProperty.SourceColumnName) 'only used for defaultattachment and availableattachmentpoint ATM
 
@@ -461,7 +465,7 @@ Public Class ItemTable
                 xw.WriteString(vbTab)
                 xw.WriteString(vbTab)
                 xw.WriteStartElement("STAND_MODIFIERS")
-                For x = x To table.Rows(i).ItemArray.Length - 1
+                For x = x To view(i).Row.ItemArray.Length - 1
                     Dim c As DataColumn = table.Columns(x)
                     If c.ColumnName.EndsWith("2") Then Exit For
                     If Not trim OrElse (i = 0 OrElse c Is table.PrimaryKey(0) OrElse ((c.DataType.Equals(GetType(Boolean)) OrElse c.DataType.Equals(GetType(Decimal)) OrElse c.DataType.Equals(GetType(ULong)) OrElse c.DataType.Equals(GetType(Integer)) OrElse c.DataType.Equals(GetType(Long))) AndAlso view(i)(c.ColumnName) <> -101) _
@@ -497,7 +501,7 @@ Public Class ItemTable
                 xw.WriteString(vbTab)
                 xw.WriteStartElement("CROUCH_MODIFIERS")
                 indent = True
-                For x = x To table.Rows(i).ItemArray.Length - 1
+                For x = x To view(i).Row.ItemArray.Length - 1
                     Dim c As DataColumn = table.Columns(x)
                     If c.ColumnName.EndsWith("3") Then Exit For
                     If Not trim OrElse (i = 0 OrElse c Is table.PrimaryKey(0) OrElse ((c.DataType.Equals(GetType(Boolean)) OrElse c.DataType.Equals(GetType(Decimal)) OrElse c.DataType.Equals(GetType(ULong)) OrElse c.DataType.Equals(GetType(Integer)) OrElse c.DataType.Equals(GetType(Long))) AndAlso view(i)(c.ColumnName) <> -101) _
@@ -533,7 +537,7 @@ Public Class ItemTable
                 xw.WriteString(vbTab)
                 xw.WriteStartElement("PRONE_MODIFIERS")
                 indent = True
-                For x = x To table.Rows(i).ItemArray.Length - 1
+                For x = x To view(i).Row.ItemArray.Length - 1
                     Dim c As DataColumn = table.Columns(x)
                     If Not trim OrElse (i = 0 OrElse c Is table.PrimaryKey(0) OrElse ((c.DataType.Equals(GetType(Boolean)) OrElse c.DataType.Equals(GetType(Decimal)) OrElse c.DataType.Equals(GetType(ULong)) OrElse c.DataType.Equals(GetType(Integer)) OrElse c.DataType.Equals(GetType(Long))) AndAlso view(i)(c.ColumnName) <> -101) _
                        OrElse (c.DataType.Equals(GetType(String)) AndAlso view(i)(c.ColumnName) <> "")) Then

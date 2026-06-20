@@ -104,7 +104,7 @@ Public Class MercStartingGearTable
         xw.WriteWhitespace(vbLf)
 
         For i As Long = 0 To view.Count - 1
-            If Not table.Rows(i).RowState = DataRowState.Deleted Then
+            If Not view(i).Row.RowState = DataRowState.Deleted Then
                 xw.WriteString(vbTab)
                 xw.WriteStartElement(table.TableName)
                 xw.WriteString(vbLf)
