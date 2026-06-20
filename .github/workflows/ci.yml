@@ -44,9 +44,19 @@ jobs:
       - name: Build (Release)
         run: dotnet build XMLEditor_VS2010.sln --configuration Release --no-restore
 
-      # Run the exact same publish the Release workflow uses, so the
-      # self-contained single-file path is proven on every push/PR.
-      - name: Publish (win-x64, self-contained, single file)
+      # Run the exact same two publishes the Release workflow uses, so both the
+      # framework-dependent and self-contained single-file paths are proven on every push/PR.
+      - name: Publish framework-dependent
+        run: >
+          dotnet publish "GUI/GUI.vbproj"
+          --configuration Release
+          --runtime win-x64
+          --self-contained false
+          -p:PublishSingleFile=true
+          -p:DebugType=embedded
+          --output publish/framework-dependent
+
+      - name: Publish self-contained
         run: >
           dotnet publish "GUI/GUI.vbproj"
           --configuration Release
@@ -54,21 +64,26 @@ jobs:
           --self-contained true
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
-          --output publish/win-x64
+          -p:DebugType=embedded
+          --output publish/self-contained
 
-      - name: Stage sample config alongside the exe
+      - name: Stage sample config + list both outputs
         shell: pwsh
         run: |
-          if (Test-Path 'GUI/XMLEditorInit.xml') {
-            Copy-Item 'GUI/XMLEditorInit.xml' 'publish/win-x64/XMLEditorInit.sample.xml'
+          foreach ($flavour in 'framework-dependent', 'self-contained') {
+            if (Test-Path 'GUI/XMLEditorInit.xml') {
+              Copy-Item 'GUI/XMLEditorInit.xml' "publish/$flavour/XMLEditorInit.sample.xml"
+            }
+            Write-Host "== $flavour =="
+            Get-ChildItem "publish/$flavour" | Select-Object Name, Length | Format-Table -AutoSize
           }
 
-      # Makes a runnable Windows build downloadable from the run's "Artifacts"
-      # section — handy for testing a PR before merging/tagging.
-      - name: Upload build artifact
+      # Upload the small framework-dependent build for quick PR testing (the
+      # self-contained one is large; it's validated above and shipped on release).
+      - name: Upload build artifact (framework-dependent)
         uses: actions/upload-artifact@v4
         with:
-          name: xml-editor-win-x64
-          path: publish/win-x64/
+          name: xml-editor-win-x64-framework-dependent
+          path: publish/framework-dependent/
           retention-days: 14
           if-no-files-found: error
