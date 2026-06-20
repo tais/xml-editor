@@ -19,6 +19,13 @@ Module Main
         Try
             AddHandler ErrorHandler.FatalError, AddressOf ExitDueToError
 
+            ' Catch otherwise-unhandled errors from UI event handlers (raised during the message
+            ' loop, after Application.Run) and from background threads, so an editing slip shows a
+            ' message and keeps the app alive instead of crashing to desktop.
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException)
+            AddHandler Application.ThreadException, AddressOf OnThreadException
+            AddHandler AppDomain.CurrentDomain.UnhandledException, AddressOf OnUnhandledException
+
             ' RoWa21: Changed the thread of the application.
             ' This is used, so that the DECIMAL numeric up down control for the "ShotsPer4Turns"
             ' always displays a "." instead of a "," for the decimal delimiter.
@@ -96,6 +103,15 @@ Module Main
 
     Private Sub ExitDueToError()
         End
+    End Sub
+
+    Private Sub OnThreadException(sender As Object, e As System.Threading.ThreadExceptionEventArgs)
+        ErrorHandler.ShowError(DisplayText.UnhandledError, e.Exception)
+    End Sub
+
+    Private Sub OnUnhandledException(sender As Object, e As UnhandledExceptionEventArgs)
+        Dim ex As Exception = TryCast(e.ExceptionObject, Exception)
+        If ex IsNot Nothing Then ErrorHandler.ShowError(DisplayText.UnhandledError, ex)
     End Sub
 
 
