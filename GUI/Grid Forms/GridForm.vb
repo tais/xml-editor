@@ -67,6 +67,8 @@ Public Class GridForm
                     End If
                 Catch ex As Exception
                     ErrorHandler.ShowError("Invalid expression.  Check the tooltips in the column headings for the fieldnames.  A standard SQL expression is expected.", "Filter Error", ex)
+                    ' Discard the bad filter so it isn't retained and re-applied next time.
+                    _customFilter = Nothing
                     _view.RowFilter = _origFilter
                 End Try
             Else
@@ -248,7 +250,9 @@ Public Class GridForm
             If excludeValue Then expressionOperator = "<>"
 
             If dataType Is GetType(String) Then
-                filterValue = "'" & CStr(filterValue) & "'"
+                ' Double any apostrophes so values like "Bobby's Gun" don't produce an invalid
+                ' filter expression (col = 'Bobby's Gun') and fail.
+                filterValue = "'" & CStr(filterValue).Replace("'", "''") & "'"
             End If
 
             Dim filterExpression As String = columnName & expressionOperator & CStr(filterValue)
@@ -304,16 +308,20 @@ Public Class GridForm
                 End If
             End If
 
-            For Each drv As DataRowView In _view
-                Select Case applyAction
-                    Case ApplyValueAction.Set
-                        drv(columnName) = value
-                    Case ApplyValueAction.Add
-                        drv(columnName) += value
-                    Case ApplyValueAction.Multiply
-                        drv(columnName) *= value
-                End Select
-            Next
+            Try
+                For Each drv As DataRowView In _view
+                    Select Case applyAction
+                        Case ApplyValueAction.Set
+                            drv(columnName) = value
+                        Case ApplyValueAction.Add
+                            drv(columnName) += value
+                        Case ApplyValueAction.Multiply
+                            drv(columnName) *= value
+                    End Select
+                Next
+            Catch ex As Exception
+                ErrorHandler.ShowError("Could not apply '" & value & "' to every row in this column. Some rows may have been changed - review or reload before saving.", "Apply Value", ex)
+            End Try
         End If
     End Sub
 
