@@ -53,30 +53,15 @@ Public Class MercGearDataForm
         End If
     End Sub
     Private Sub MercGearDataForm_Activated(sender As System.Object, e As System.EventArgs) Handles MyBase.Activated
-        If _view.Table.Rows(_id).ItemArray(3).ToString.Length = 0 Then '3 is mGearkitName1
-            GearKitPage1.Text = "GEARKIT 1"
-        Else
-            GearKitPage1.Text = _view.Table.Rows(_id).ItemArray(3).ToString
-        End If
-        If _view.Table.Rows(_id).ItemArray(68).ToString.Length = 0 Then '68 is mGearkitName2
-            GearKitPage2.Text = "GEARKIT 2"
-        Else
-            GearKitPage2.Text = _view.Table.Rows(_id).ItemArray(68).ToString
-        End If
-        If _view.Table.Rows(_id).ItemArray(133).ToString.Length = 0 Then '133 is mGearkitName3
-            GearKitPage3.Text = "GEARKIT 3"
-        Else
-            GearKitPage3.Text = _view.Table.Rows(_id).ItemArray(133).ToString
-        End If
-        If _view.Table.Rows(_id).ItemArray(198).ToString.Length = 0 Then '198 is mGearkitName4
-            GearKitPage4.Text = "GEARKIT 4"
-        Else
-            GearKitPage4.Text = _view.Table.Rows(_id).ItemArray(198).ToString
-        End If
-        If _view.Table.Rows(_id).ItemArray(263).ToString.Length = 0 Then '263 is mGearkitName5
-            GearKitPage5.Text = "GEARKIT 5"
-        Else
-            GearKitPage5.Text = _view.Table.Rows(_id).ItemArray(263).ToString
-        End If
+        ' Use the bound view's row (filtered to ID = _id), NOT Rows(_id) which indexes by physical
+        ' position and read the wrong merc (or threw IndexOutOfRange) whenever an ID didn't equal
+        ' its row position.
+        If _view Is Nothing OrElse _view.Count = 0 Then Return
+        Dim r As System.Data.DataRowView = _view(0)
+        GearKitPage1.Text = If(r(3).ToString().Length = 0, "GEARKIT 1", r(3).ToString())     '3 is mGearkitName1
+        GearKitPage2.Text = If(r(68).ToString().Length = 0, "GEARKIT 2", r(68).ToString())    '68 is mGearkitName2
+        GearKitPage3.Text = If(r(133).ToString().Length = 0, "GEARKIT 3", r(133).ToString())  '133 is mGearkitName3
+        GearKitPage4.Text = If(r(198).ToString().Length = 0, "GEARKIT 4", r(198).ToString())  '198 is mGearkitName4
+        GearKitPage5.Text = If(r(263).ToString().Length = 0, "GEARKIT 5", r(263).ToString())  '263 is mGearkitName5
     End Sub
 End Class
