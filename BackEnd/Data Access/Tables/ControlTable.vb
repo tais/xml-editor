@@ -46,6 +46,10 @@ Public Class ControlTable
         xmldoc.Load(fs)
 
         Dim xmlnode As XmlNode = xmldoc.GetElementsByTagName("INVENTORYLIST").Item(0)
+        If xmlnode Is Nothing Then
+            fs.Close()
+            Throw New DataLoadException("'" & fileName & "' is missing the expected <INVENTORYLIST> root element. It may be the wrong file or from a different game version.")
+        End If
         Dim xmlParentNode As XmlNodeList
         Dim xmlChildNode As XmlNodeList
         Dim xmlChild2Node As XmlNodeList

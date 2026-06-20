@@ -108,6 +108,38 @@ Public Class ErrorHandler
         End Try
     End Function
 
+    ''' <summary>
+    ''' Turns a load/parse exception into one user-readable sentence that names the file and,
+    ''' for XML errors, the line and column. Used so data problems produce actionable messages
+    ''' instead of raw .NET exception text.
+    ''' </summary>
+    Public Shared Function DescribeLoadError(ByVal ex As Exception, ByVal fileName As String) As String
+        Dim where As String = If(String.IsNullOrEmpty(fileName), "A data file", "'" & fileName & "'")
+
+        ' Drill down to the most specific cause - ReadXml/DataSet usually wrap the real error.
+        Dim cause As Exception = ex
+        While cause.InnerException IsNot Nothing
+            cause = cause.InnerException
+        End While
+
+        If TypeOf cause Is System.Xml.XmlException Then
+            Dim xe As System.Xml.XmlException = DirectCast(cause, System.Xml.XmlException)
+            Return where & " is not valid XML (line " & xe.LineNumber & ", column " & xe.LinePosition & "): " & xe.Message
+        ElseIf TypeOf cause Is System.IO.FileNotFoundException Then
+            Return where & " could not be found."
+        ElseIf TypeOf cause Is System.IO.DirectoryNotFoundException Then
+            Return where & " is in a folder that does not exist: " & cause.Message
+        ElseIf TypeOf cause Is System.IO.IOException Then
+            Return where & " could not be read - it may be open in another program: " & cause.Message
+        ElseIf TypeOf cause Is FormatException OrElse TypeOf cause Is InvalidCastException Then
+            Return where & " contains a value of the wrong type (for example text where a number is expected): " & cause.Message
+        ElseIf TypeOf cause Is System.Data.ConstraintException Then
+            Return where & " contains invalid data (a missing required value, a duplicate id, or a reference to something that does not exist): " & cause.Message
+        Else
+            Return where & ": " & cause.Message
+        End If
+    End Function
+
     Public Shared Sub ShowError(ByVal ex As Exception)
         ShowError("", ex)
     End Sub
@@ -184,7 +216,7 @@ Public Class ErrorHandler
         Try
             Dim str As String = " - Memory: " & Format(GC.GetTotalMemory(False), "#,###")
             Debug.WriteLine(Now & str & " - " & message)
-            If blnLogFileActive Then
+            If blnLogFileActive AndAlso objTxtWriter IsNot Nothing Then
                 'write error to log file
                 objTxtWriter.WriteLine(Now & str & " - " & message)
                 objTxtWriter.WriteLine(vbCr)
@@ -195,14 +227,31 @@ Public Class ErrorHandler
             End If
             If blnWriteToConsole Then Console.WriteLine(Now & str & " - " & message)
         Catch ex As Exception
-            LogError(ex)
+            ' Never call back into the logger here - LogError -> LogString -> here would
+            ' recurse into a StackOverflow if the writer is persistently failing.
+            Debug.WriteLine("Logging failed: " & ex.Message)
         End Try
     End Sub
 
     Protected Shared Sub StartLogFile(ByVal MaintainLastLog As Boolean)
-        'setup text file writer
-        strLogFilename = IO.Directory.GetCurrentDirectory & "\XmlEditorLog.txt"
-        objTxtWriter = New IO.StreamWriter(strLogFilename, MaintainLastLog)
+        'setup text file writer - never let a logging failure crash the app.
+        'The current directory can be read-only (e.g. when run from Program Files),
+        'so fall back to the temp folder, and to no file logging at all, rather than
+        'throwing out of the shared constructor (which would surface as a confusing
+        'TypeInitializationException the first time any error is reported).
+        Try
+            strLogFilename = IO.Path.Combine(IO.Directory.GetCurrentDirectory(), "XmlEditorLog.txt")
+            objTxtWriter = New IO.StreamWriter(strLogFilename, MaintainLastLog)
+        Catch
+            Try
+                strLogFilename = IO.Path.Combine(IO.Path.GetTempPath(), "XmlEditorLog.txt")
+                objTxtWriter = New IO.StreamWriter(strLogFilename, MaintainLastLog)
+            Catch
+                blnLogFileActive = False
+                objTxtWriter = Nothing
+                Return
+            End Try
+        End Try
 
         'write whatever shows in the debug window to the text file
         objTxtWriter.AutoFlush = True

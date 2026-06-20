@@ -87,49 +87,64 @@ Public Class IniFile
     End Property
 
     Public Shared Sub ReadFile(ByVal fileName As String)
-        Dim xr As New Xml.XmlTextReader(fileName)
-        Dim curNode As String = ""
-        Dim curValue As String = ""
-        While xr.Read
-            If xr.NodeType = Xml.XmlNodeType.Element Then
-                curNode = xr.Name
-            ElseIf xr.NodeType = Xml.XmlNodeType.Text Then
-                curValue = xr.Value
-                Select Case curNode
-                    Case "AP_Maximum"
-                        apMax = curValue
-                    Case "Use_Working_Directory"
-                        useWorkingDir = CBool(curValue)
-                    Case "Hide_Nothing_Items"
-                        HideNothingItems = CBool(curValue)
-                    Case Else
-                        If IsNumeric(curNode.Substring(curNode.Length - 1)) Then
-                            Dim index As Integer = CInt(curNode.Substring(curNode.LastIndexOf("_") + 1)) - 1
-                            If curNode.StartsWith("Data_Directory") Then
-                                dataDir(index) = curValue
-                                If Not dataDir(index).EndsWith("\") Then dataDir(index) &= "\"
-                            ElseIf curNode.StartsWith("GameDir_Russian_Path") Then
-                                languageSpecificRussianGameDirPath(index) = curValue
-                            ElseIf curNode.StartsWith("GameDir_German_Path") Then
-                                languageSpecificGermanGameDirPath(index) = curValue
-                            ElseIf curNode.StartsWith("GameDir_Polish_Path") Then
-                                languageSpecificPolishGameDirPath(index) = curValue
-                            ElseIf curNode.StartsWith("GameDir_French_Path") Then
-                                languageSpecificFrenchGameDirPath(index) = curValue
-                            ElseIf curNode.StartsWith("GameDir_Italian_Path") Then
-                                languageSpecificItalianGameDirPath(index) = curValue
-                            ElseIf curNode.StartsWith("GameDir_Chinese_Path") Then
-                                languageSpecificChineseGameDirPath(index) = curValue
-                            ElseIf curNode.StartsWith("GameDir_Dutch_Path") Then
-                                languageSpecificDutchGameDirPath(index) = curValue
-                            ElseIf curNode.StartsWith("GameDir_Taiwanese_Path") Then
-                                languageSpecificTaiwaneseGameDirPath(index) = curValue
-                            End If
-                        End If
-                End Select
-            End If
-        End While
-        xr.Close()
+        If Not IO.File.Exists(fileName) Then
+            Throw New DataLoadException("The configuration file '" & fileName & "' was not found in " &
+                                        IO.Directory.GetCurrentDirectory() & ". The editor cannot start without it.")
+        End If
+
+        Try
+            Using xr As New Xml.XmlTextReader(fileName)
+                Dim curNode As String = ""
+                Dim curValue As String = ""
+                While xr.Read
+                    If xr.NodeType = Xml.XmlNodeType.Element Then
+                        curNode = xr.Name
+                    ElseIf xr.NodeType = Xml.XmlNodeType.Text Then
+                        curValue = xr.Value
+                        Select Case curNode
+                            Case "AP_Maximum"
+                                apMax = curValue
+                            Case "Use_Working_Directory"
+                                useWorkingDir = CBool(curValue)
+                            Case "Hide_Nothing_Items"
+                                HideNothingItems = CBool(curValue)
+                            Case Else
+                                If IsNumeric(curNode.Substring(curNode.Length - 1)) Then
+                                    Dim index As Integer = CInt(curNode.Substring(curNode.LastIndexOf("_") + 1)) - 1
+                                    If index < 0 OrElse index > MaxDataDir Then
+                                        Throw New DataLoadException("Configuration setting '" & curNode &
+                                            "' in XMLEditorInit.xml uses an index outside the supported range 1 to " & (MaxDataDir + 1) & ".")
+                                    End If
+                                    If curNode.StartsWith("Data_Directory") Then
+                                        dataDir(index) = curValue
+                                        If Not dataDir(index).EndsWith("\") Then dataDir(index) &= "\"
+                                    ElseIf curNode.StartsWith("GameDir_Russian_Path") Then
+                                        languageSpecificRussianGameDirPath(index) = curValue
+                                    ElseIf curNode.StartsWith("GameDir_German_Path") Then
+                                        languageSpecificGermanGameDirPath(index) = curValue
+                                    ElseIf curNode.StartsWith("GameDir_Polish_Path") Then
+                                        languageSpecificPolishGameDirPath(index) = curValue
+                                    ElseIf curNode.StartsWith("GameDir_French_Path") Then
+                                        languageSpecificFrenchGameDirPath(index) = curValue
+                                    ElseIf curNode.StartsWith("GameDir_Italian_Path") Then
+                                        languageSpecificItalianGameDirPath(index) = curValue
+                                    ElseIf curNode.StartsWith("GameDir_Chinese_Path") Then
+                                        languageSpecificChineseGameDirPath(index) = curValue
+                                    ElseIf curNode.StartsWith("GameDir_Dutch_Path") Then
+                                        languageSpecificDutchGameDirPath(index) = curValue
+                                    ElseIf curNode.StartsWith("GameDir_Taiwanese_Path") Then
+                                        languageSpecificTaiwaneseGameDirPath(index) = curValue
+                                    End If
+                                End If
+                        End Select
+                    End If
+                End While
+            End Using
+        Catch ex As DataLoadException
+            Throw
+        Catch ex As Exception
+            Throw New DataLoadException("Error reading configuration file '" & fileName & "': " & ex.Message, ex)
+        End Try
     End Sub
 
 End Class

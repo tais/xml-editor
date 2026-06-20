@@ -336,6 +336,10 @@ Public Class ItemTable
 
         xmldoc.Load(fs)
         xmlnode = xmldoc.GetElementsByTagName("ITEMLIST").Item(0)
+        If xmlnode Is Nothing Then
+            fs.Close()
+            Throw New DataLoadException("'" & fileName & "' is missing the expected <ITEMLIST> root element. It may be the wrong file or from a different game version.")
+        End If
         For i = 0 To xmlnode.ChildNodes.Count - 1
             If xmlnode.ChildNodes.Item(i).Name = "#comment" Then
                 uicomments = uicomments + 1

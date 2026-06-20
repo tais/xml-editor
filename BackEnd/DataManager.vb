@@ -218,6 +218,10 @@
 
     Protected Function GetImageTypeCount() As Integer
         Dim interfaceDir As String = Me.BaseDirectory & "Interface"
+        If Not IO.Directory.Exists(interfaceDir) Then
+            Throw New DataLoadException("The data directory '" & _dataDirectory & "' is missing its 'Interface' folder (expected at '" & interfaceDir &
+                                        "'). Check the matching Data_Directory setting in XMLEditorInit.xml.")
+        End If
         Return IO.Directory.EnumerateFiles(interfaceDir, "mdp*.sti").Count
     End Function
 
