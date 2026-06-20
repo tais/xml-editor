@@ -124,7 +124,9 @@
     <ProjectReference Include="..\BackEnd\BackEnd.vbproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.Compatibility" Version="9.0.0" />
+    <!-- ConfigurationManager backs My.Settings/app.config. The heavyweight
+         Microsoft.Windows.Compatibility meta-package is not needed here (EventLog is referenced
+         transitively from BackEnd; System.Drawing/WinForms come from UseWindowsForms). -->
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.0" />
   </ItemGroup>
 </Project>
