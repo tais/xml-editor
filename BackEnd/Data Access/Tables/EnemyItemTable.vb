@@ -39,7 +39,7 @@ Public Class EnemyItemTable
         Dim rowindex As Integer
         If ammoTable.Rows.Count > 0 Then
             Dim row As DataRow = _table.NewRow
-            If _table.ExtendedProperties(TableProperty.FileName) = "ENEMYITEMCHOICES" Then
+            If _table.TableName() = "ENEMYITEMCHOICESDEFAULT" Then   ' was comparing the FileName property to "ENEMYITEMCHOICES", which never matched
                 rowindex = 19
             ElseIf _table.TableName() = "ENEMYITEMCHOICESADMIN" Then
                 rowindex = 29
@@ -55,7 +55,7 @@ Public Class EnemyItemTable
                 rowindex = 79
             End If
             For i As Integer = 0 To ammoTable.Rows.Count - 1   ' was "To Count" -> indexed one past the end
-                If ammoTable.Rows(i).ItemArray.Contains(rowindex) Then
+                If CInt(ammoTable.Rows(i)("uiIndex")) = rowindex Then   ' match on the index column, not ItemArray.Contains which scanned every column
                     row.ItemArray = ammoTable.Rows(i).ItemArray
                     row("uiIndex") = 19
                     _table.Rows.Add(row)
