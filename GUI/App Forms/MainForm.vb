@@ -2,7 +2,9 @@ Imports System.Windows.Forms
 
 Public Class MainForm
     Private WithEvents _client As MdiClient
-    Private _activeDataSet As DataManager = GameData(0)
+    ' First populated data set, not always slot 0 — a sparse XMLEditorInit.xml (e.g. only
+    ' Data_Directory_2 set) leaves GameData(0) Nothing and used to NRE at startup.
+    Private _activeDataSet As DataManager = GameData.FirstOrDefault(Function(d) d IsNot Nothing)
 
     Private Sub MainForm_Load(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles MyBase.Load
         Me.Text = String.Format(DisplayText.MainFormTitle, _activeDataSet.Name)
@@ -22,10 +24,11 @@ Public Class MainForm
         End With
 
         For Each item As ToolStripMenuItem In Me.SelectDataToolStripMenuItem.DropDownItems
-            If item.Tag > GameDataCount - 1 Then
+            Dim idx As Integer = CInt(item.Tag)
+            If idx > GameDataCount - 1 OrElse GameData(idx) Is Nothing Then
                 item.Visible = False
             Else
-                item.Text = String.Format(item.Text, GameData(CInt(item.Tag)).Name)
+                item.Text = String.Format(item.Text, GameData(idx).Name)
             End If
         Next
 
@@ -352,7 +355,9 @@ Public Class MainForm
     Private Sub AttachmentClassCodeMakerToolStripMenuItem_Click(sender As System.Object, e As System.EventArgs) Handles AttachmentClassCodeMakerToolStripMenuItem.Click
         Dim text = FormatFormText("NAS Attachment Class Code Maker")
         If Not FormOpen(text) Then
-            Dim frm As New BitCodeMakerForm(_activeDataSet, text, Tables.AttachmentPoints)
+            ' Class code maker must source the attachment-class table, not attachment points
+            ' (the Attachment Point code maker below already uses AttachmentPoints).
+            Dim frm As New BitCodeMakerForm(_activeDataSet, text, Tables.AttachmentClasses)
             ShowForm(frm)
         End If
     End Sub
@@ -479,11 +484,11 @@ Public Class MainForm
         ShowDataGridForm(_activeDataSet, FormatDataText(DisplayText.AmmoCalibers & "(" & OtherText.Russian & ")"), Tables.RussianAmmoStrings)
     End Sub
 
-    Private Sub PolishToolStripMenuItem_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles RussianToolStripMenuItem.Click, PolishToolStripMenuItem.Click
+    Private Sub PolishToolStripMenuItem_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles PolishToolStripMenuItem.Click
         ShowDataGridForm(_activeDataSet, FormatDataText(DisplayText.AmmoCalibers & "(" & OtherText.Polish & ")"), Tables.PolishAmmoStrings)
     End Sub
 
-    Private Sub FrenchToolStripMenuItem_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles RussianToolStripMenuItem.Click, PolishToolStripMenuItem.Click, FrenchToolStripMenuItem.Click
+    Private Sub FrenchToolStripMenuItem_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles FrenchToolStripMenuItem.Click
         ShowDataGridForm(_activeDataSet, FormatDataText(DisplayText.AmmoCalibers & "(" & OtherText.French & ")"), Tables.FrenchAmmoStrings)
     End Sub
 

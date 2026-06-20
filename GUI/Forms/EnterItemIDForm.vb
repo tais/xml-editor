@@ -24,7 +24,9 @@ Public Class EnterItemIDForm
             Return False
         End If
 
-        Dim r As DataRow = _dm.Database.Table(Tables.Items.Name).Rows.Find(ItemIDTextBox.Text)
+        ' Items has an Integer primary key; Rows.Find needs an Integer, not the raw String
+        ' (passing the String never matched). IsNumeric was already checked above.
+        Dim r As DataRow = _dm.Database.Table(Tables.Items.Name).Rows.Find(CInt(ItemIDTextBox.Text))
         If r Is Nothing Then
             ErrorHandler.ShowWarning("Unrecognized item ID.", MessageBoxIcon.Hand)
             Return False

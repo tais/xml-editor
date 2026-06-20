@@ -33,6 +33,7 @@ Public Class ChangeClassForm
     End Sub
 
     Protected Overrides Function OkAction() As Boolean
+        If _view Is Nothing OrElse _view.Count = 0 Then Return False
         Dim id As Integer = _view(0)(Tables.Items.Fields.ID)
         _view(0)(Tables.Items.Fields.ItemClass) = ItemClassListBox.SelectedValue
         _view(0).EndEdit()

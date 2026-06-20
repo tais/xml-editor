@@ -54,7 +54,7 @@ Public Class EnemyItemTable
             ElseIf Table.TableName() = "MILITIAITEMCHOICESELITE" Then
                 rowindex = 79
             End If
-            For i As Integer = 0 To ammoTable.Rows.Count
+            For i As Integer = 0 To ammoTable.Rows.Count - 1   ' was "To Count" -> indexed one past the end
                 If ammoTable.Rows(i).ItemArray.Contains(rowindex) Then
                     row.ItemArray = ammoTable.Rows(i).ItemArray
                     row("uiIndex") = 19

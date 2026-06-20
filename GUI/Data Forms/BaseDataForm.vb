@@ -45,7 +45,8 @@ Public Class BaseDataForm
 #Region " Data Binding "
     Protected Sub Bind(ByVal tableName As String, ByVal filter As String)
         _view = New DataView(_dm.Database.Table(tableName), filter, "", DataViewRowState.CurrentRows)
-        _view(0).BeginEdit()
+        ' Guard against the record having been deleted/filtered out (empty view) -> no IndexOutOfRange.
+        If _view.Count > 0 Then _view(0).BeginEdit()
         BindControls(CType(Me, Control))
     End Sub
 
@@ -91,6 +92,7 @@ Public Class BaseDataForm
     End Sub
 
     Protected Overridable Function CommitData() As Boolean
+        If _view Is Nothing OrElse _view.Count = 0 Then Return False
         _view(0).EndEdit()
         _view(0).Row.AcceptChanges()
         Return True

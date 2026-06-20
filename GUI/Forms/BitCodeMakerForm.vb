@@ -56,10 +56,15 @@ Public Class BitCodeMakerForm
     Protected Sub Checkbox_Checked(sender As Object, e As EventArgs)
         Dim cb As CheckBox = DirectCast(sender, CheckBox)
 
+        ' Parse the (user-editable) current code defensively; non-numeric text must not throw.
+        Dim current As Decimal
+        If Not Decimal.TryParse(CodeTextBox.Text, current) Then current = 0
+        Dim bit As Decimal = CDec(cb.Tag)
+
         If cb.Checked Then
-            If Not String.IsNullOrEmpty(CodeTextBox.Text) Then CodeTextBox.Text = CDec(CodeTextBox.Text) + CDec(cb.Tag) Else CodeTextBox.Text = CDec(cb.Tag)
+            CodeTextBox.Text = (current + bit).ToString()
         Else
-            If Not String.IsNullOrEmpty(CodeTextBox.Text) Then CodeTextBox.Text = CDec(CodeTextBox.Text) - CDec(cb.Tag)
+            CodeTextBox.Text = (current - bit).ToString()
         End If
     End Sub
 
@@ -74,18 +79,23 @@ Public Class BitCodeMakerForm
     End Sub
 
     Protected Sub AddCode()
-        If Not String.IsNullOrEmpty(CodeTextBox.Text) AndAlso Not String.IsNullOrEmpty(NameTextBox.Text) Then
-            Dim row As DataRow = _sourceTable.Rows.Find(CDec(CodeTextBox.Text))
-            If row Is Nothing Then
-                row = _sourceTable.NewRow
-                row(0) = CDec(CodeTextBox.Text)
-                row(1) = NameTextBox.Text
-                _sourceTable.Rows.Add(row)
-                CodeTextBox.Text = Nothing
-                NameTextBox.Text = Nothing
+        Dim code As Decimal
+        If Not Decimal.TryParse(CodeTextBox.Text, code) Then
+            ErrorHandler.ShowWarning("Code must be a number.")
+            Return
+        End If
+        If String.IsNullOrEmpty(NameTextBox.Text) Then Return
 
-                BuildCheckBoxes()
-            End If
+        Dim row As DataRow = _sourceTable.Rows.Find(code)
+        If row Is Nothing Then
+            row = _sourceTable.NewRow
+            row(0) = code
+            row(1) = NameTextBox.Text
+            _sourceTable.Rows.Add(row)
+            CodeTextBox.Text = Nothing
+            NameTextBox.Text = Nothing
+
+            BuildCheckBoxes()
         End If
     End Sub
 

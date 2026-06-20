@@ -1041,8 +1041,12 @@ Public Class ItemDataForm
             _view(0)("GrenadeLauncher") = TempChecklistBox.GetItemChecked(57)
             _view(0)("Mortar") = TempChecklistBox.GetItemChecked(58)
             _view(0)("Duckbill") = TempChecklistBox.GetItemChecked(59)
-            _view(0)("Detonator") = TempChecklistBox.GetItemChecked(60)
-            _view(0)("RemoteDetonator") = TempChecklistBox.GetItemChecked(61)
+            'Detonator/RemoteDetonator columns were removed from the schema (commit 783b532) and
+            'the matching reads were commented out, but these writes were left in. Writing to a
+            'non-existent column threw ArgumentException, which CommitData's Try swallowed -> every
+            'item edit was silently rejected. Left commented to match the removed reads above.
+            '_view(0)("Detonator") = TempChecklistBox.GetItemChecked(60)
+            '_view(0)("RemoteDetonator") = TempChecklistBox.GetItemChecked(61)
             _view(0)("HideMuzzleFlash") = TempChecklistBox.GetItemChecked(62)
             _view(0)("RocketLauncher") = TempChecklistBox.GetItemChecked(63)
 
@@ -1218,6 +1222,8 @@ Public Class ItemDataForm
     End Sub
 
     Private Sub GridOpenItem(ByVal grid As DataGridView, ByVal rowIndex As Integer, ByVal itemIDFieldName As String)
+        ' rowIndex is -1 when the top-left header corner is double-clicked; guard against it.
+        If rowIndex < 0 OrElse rowIndex >= grid.Rows.Count Then Return
         Dim name As String = Nothing
         Dim id As Integer = grid.Rows(rowIndex).Cells(itemIDFieldName).Value
         Dim r As DataRow = _dm.Database.Table(Tables.Items.Name).Rows.Find(id)
@@ -1416,7 +1422,13 @@ Public Class ItemDataForm
 
         If rows.Length > 0 Then
             cb.Checked = True
-            ud.Value = rows(0)(Tables.InventoryTableFields.Quantity)
+            ' Widen the control's range if the stored quantity is outside it, so a large/odd
+            ' value loads instead of throwing ArgumentOutOfRangeException (NumericUpDown.Maximum
+            ' defaults to 250).
+            Dim qty As Decimal = CDec(rows(0)(Tables.InventoryTableFields.Quantity))
+            If qty > ud.Maximum Then ud.Maximum = qty
+            If qty < ud.Minimum Then ud.Minimum = qty
+            ud.Value = qty
             ud.Enabled = True
         Else
             cb.Checked = False
