@@ -170,6 +170,9 @@ Public Class ItemImageManager
     End Property
 
     Public Function Exists(type As Integer, index As Integer) As Boolean
-        If bigItemList.GetUpperBound(0) >= type AndAlso bigItemList(type).GetUpperBound(0) >= index Then Return True
+        ' Guard negatives (a negative type indexed bigItemList(type) and threw) and return explicitly.
+        If type < 0 OrElse index < 0 Then Return False
+        If type > bigItemList.GetUpperBound(0) Then Return False
+        Return index <= bigItemList(type).GetUpperBound(0)
     End Function
 End Class

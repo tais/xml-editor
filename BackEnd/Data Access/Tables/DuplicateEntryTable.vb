@@ -12,7 +12,7 @@ Public Class DuplicateEntryTable
 
     '1) each record should only have two columns
     '2) this procedure will ensure that there is always a duplicate record with the column values reversed
-    Protected Sub VerifyData(sender As DataManager) Handles _dm.BeforeSaveData
+    Protected Sub VerifyData(sender As DataManager) Handles _dm.BeforeSaveData, _dm.BeforeSaveWorkingData
         Dim view As New DataView(_table, "", "", DataViewRowState.CurrentRows)
 
         For i As Long = view.Count - 1 To 0 Step -1
