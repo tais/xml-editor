@@ -317,16 +317,13 @@ Public Class ItemDataForm
 
 
 
-        ''Setting Drugs
-        'Dim TempDrugFlags As UInt32 = _view(0)("DrugType")
-        'Dim BitDrugFlags As String = ToBinary(TempDrugFlags).PadRight(32, "0")
-
-        ''TODO: Dynamically create the checkboxes from the entries in table "DRUG"
-
-        'Dim TempDrugChecklistBox As CheckedListBox = ItemTab.TabPages("FlagsTab").Controls.Item("GroupBox65").Controls.Item("DrugsCheckedList")
-        'For i As Integer = 0 To 31
-        '    TempDrugChecklistBox.SetItemChecked(i, (BitDrugFlags(i).ToString.Equals("1")))
-        'Next
+        ' Setting Drugs - decode the DrugType bitmask into the drug-flag checkboxes (bit i <-> item i,
+        ' matching the DrugType lookup: 1=Adrenaline, 2=Alcohol, 4=Regeneration, ...).
+        ' TODO: ideally populate the checkbox labels dynamically from the DrugType lookup table.
+        Dim drugFlags As ULong = CULng(_view(0)("DrugType"))
+        For i As Integer = 0 To DrugsCheckedList.Items.Count - 1
+            DrugsCheckedList.SetItemChecked(i, (drugFlags And (1UL << i)) <> 0UL)
+        Next
 
 
         SetupGrid(AttachmentGrid, Tables.Attachments.Name, Tables.Attachments.Fields.ItemID)
@@ -1106,16 +1103,12 @@ Public Class ItemDataForm
             _view(0)("ProvidesRobotLaserBonus") = TempChecklistBox.GetItemChecked(42)
 
 
-            ''Saving Drugs
-            'Dim TempDrugFlags As UInt32 = 0
-            'Dim TempDrugChecklistBox As CheckedListBox = ItemTab.TabPages("FlagsTab").Controls.Item("GroupBox65").Controls.Item("DrugsCheckedList")
-            'For i As Integer = 0 To 31
-            '    If TempDrugChecklistBox.GetItemChecked(i) Then
-            '        TempDrugFlags += 2 ^ i
-            '    End If
-            'Next
-
-            '_view(0)("DrugType") = TempDrugFlags
+            ' Saving Drugs - re-encode the checked drug flags into the DrugType bitmask.
+            Dim drugFlags As ULong = 0
+            For i As Integer = 0 To DrugsCheckedList.Items.Count - 1
+                If DrugsCheckedList.GetItemChecked(i) Then drugFlags = drugFlags Or (1UL << i)
+            Next
+            _view(0)("DrugType") = drugFlags
 
             _view(0).Row.AcceptChanges()
             AcceptGridChanges(AttachmentGrid)
