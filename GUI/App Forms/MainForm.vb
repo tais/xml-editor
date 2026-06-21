@@ -54,17 +54,42 @@ Public Class MainForm
 
     Private Sub ValidateActiveData(ByVal sender As Object, ByVal e As EventArgs)
         System.Windows.Forms.Cursor.Current = Cursors.WaitCursor
+        Dim report As String
         Try
-            Dim report As String = DataValidator.Validate(_activeDataSet)
-            Dim path As String = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "JA2-XML-Editor-ValidationReport.txt")
-            System.IO.File.WriteAllText(path, report)
-            ' Open the report in the default text viewer.
-            System.Diagnostics.Process.Start(New System.Diagnostics.ProcessStartInfo(path) With {.UseShellExecute = True})
+            report = DataValidator.Validate(_activeDataSet)
         Catch ex As Exception
             ErrorHandler.ShowError("Could not run data validation.", ex)
+            Return
         Finally
             System.Windows.Forms.Cursor.Current = Cursors.Arrow
         End Try
+        ShowReportWindow("Validation - " & _activeDataSet.Name, report)
+    End Sub
+
+    ''' <summary>Shows read-only text in a simple scrollable window (built in code), owned by the
+    ''' main form so it pops out but closes with the app. Non-modal so it can stay open while editing.</summary>
+    Private Sub ShowReportWindow(ByVal title As String, ByVal text As String)
+        Dim box As New TextBox With {
+            .Multiline = True,
+            .ReadOnly = True,
+            .ScrollBars = ScrollBars.Both,
+            .WordWrap = False,
+            .Dock = DockStyle.Fill,
+            .Font = New Font(FontFamily.GenericMonospace, 9.0F),
+            .Text = text
+        }
+        box.Select(0, 0)
+
+        Dim frm As New Form With {
+            .Text = title,
+            .Width = 720,
+            .Height = 520,
+            .StartPosition = FormStartPosition.CenterParent,
+            .MinimizeBox = False
+        }
+        frm.Controls.Add(box)
+        frm.Owner = Me
+        frm.Show()
     End Sub
 
     Private Sub RemoveUnusedLanguageSpecificAmmoStringMenuItems()
