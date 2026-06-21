@@ -1623,7 +1623,7 @@ Partial Class MainForm
         Controls.Add(MenuStrip)
         Controls.Add(StatusStrip)
         Icon = CType(resources.GetObject("$this.Icon"), Icon)
-        IsMdiContainer = True
+        IsMdiContainer = False
         MainMenuStrip = MenuStrip
         Margin = New Padding(4, 4, 4, 4)
         Name = "MainForm"

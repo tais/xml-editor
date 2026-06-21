@@ -1,7 +1,6 @@
 Imports System.Windows.Forms
 
 Public Class MainForm
-    Private WithEvents _client As MdiClient
     ' First populated data set, not always slot 0 — a sparse XMLEditorInit.xml (e.g. only
     ' Data_Directory_2 set) leaves GameData(0) Nothing and used to NRE at startup.
     Private _activeDataSet As DataManager = GameData.FirstOrDefault(Function(d) d IsNot Nothing)
@@ -32,16 +31,9 @@ Public Class MainForm
             End If
         Next
 
-        For Each ctl As Control In Me.Controls
-            If TypeOf ctl Is MdiClient Then
-                _client = ctl
-                Exit For
-            End If
-        Next
-        If Me.BackgroundImageToolStripMenuItem.Checked Then
-            _client.BackgroundImage = My.Resources.DESKTOP
-            _client.BackgroundImageLayout = ImageLayout.Stretch
-        End If
+        ' Child windows are independent top-level windows now (not MDI children), so there is no
+        ' MdiClient surface and no "desktop" background to set up.
+        Me.BackgroundImageToolStripMenuItem.Visible = False
         StatusLabel.Text = DisplayText.Welcome
     End Sub
 
@@ -99,27 +91,6 @@ Public Class MainForm
         End With
     End Sub
 
-    Private Sub client_Paint(ByVal sender As Object, ByVal e As System.Windows.Forms.PaintEventArgs) Handles _client.Paint
-        If _client.BackgroundImage IsNot Nothing Then
-            Static flag As Boolean
-            If Not flag Then
-                Dim g As Graphics = e.Graphics
-                g.DrawImage(_client.BackgroundImage, New RectangleF(0, 0, _client.Size.Width, _client.Size.Height))
-            Else
-                flag = True
-                _client.Invalidate()
-            End If
-        End If
-    End Sub
-
-    Private Sub client_Resize(ByVal sender As Object, ByVal e As System.EventArgs) Handles _client.Resize
-        _client.Invalidate()
-    End Sub
-
-    Private Sub ChildForm_Resized(ByVal sender As Object, ByVal e As EventArgs)
-        _client.Invalidate()
-    End Sub
-
     Private Sub OpenFile(ByVal sender As Object, ByVal e As EventArgs) Handles OpenToolStripMenuItem.Click, OpenToolStripButton.Click
         System.Windows.Forms.Cursor.Current = Cursors.WaitCursor
         Splash.Show()
@@ -145,7 +116,7 @@ Public Class MainForm
     End Sub
 
     Friend Function FormOpen(ByVal formText As String) As Boolean
-        For Each f As Form In MdiChildren
+        For Each f As Form In Me.OwnedForms
             If f.Text = formText Then
                 f.Activate()
                 Return True
@@ -155,8 +126,9 @@ Public Class MainForm
     End Function
 
     Friend Sub ShowForm(ByVal frm As Form)
-        frm.MdiParent = Me
-        AddHandler frm.Resize, AddressOf ChildForm_Resized
+        ' Show as a top-level window owned by the main form, so it "pops out" (movable anywhere,
+        ' onto another monitor) yet still closes/minimises with the application.
+        frm.Owner = Me
         frm.Show()
     End Sub
 
@@ -201,8 +173,9 @@ Public Class MainForm
     End Sub
 
     Private Sub CloseAllToolStripMenuItem_Click(ByVal sender As Object, ByVal e As EventArgs) Handles CloseAllToolStripMenuItem.Click
-        ' Close all child forms of the parent.
-        For Each ChildForm As Form In Me.MdiChildren
+        ' Close all open child windows (OwnedForms returns a snapshot array, so closing during
+        ' iteration is safe).
+        For Each ChildForm As Form In Me.OwnedForms
             ChildForm.Close()
         Next
     End Sub
@@ -677,12 +650,8 @@ Public Class MainForm
         ShowLookupGridForm(_activeDataSet, DisplayText.MilitiaItems, Tables.MilitiaItemsElite)
     End Sub
     Private Sub BackgroundImageToolStripMenuItem_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles BackgroundImageToolStripMenuItem.Click
-        If BackgroundImageToolStripMenuItem.Checked Then
-            _client.BackgroundImage = My.Resources.DESKTOP
-            _client.BackgroundImageLayout = ImageLayout.Stretch
-        Else
-            _client.BackgroundImage = Nothing
-        End If
+        ' No-op: there is no MDI client surface to paint a background on now that child windows are
+        ' separate top-level windows (the menu item is hidden in MainForm_Load).
     End Sub
 
     Private Sub DataToolStripMenuItem_Click(sender As System.Object, e As System.EventArgs) Handles Data1ToolStripMenuItem.Click, Data2ToolStripMenuItem.Click, Data3ToolStripMenuItem.Click, Data4ToolStripMenuItem.Click, Data5ToolStripMenuItem.Click, Data6ToolStripMenuItem.Click, Data7ToolStripMenuItem.Click, Data8ToolStripMenuItem.Click, Data9ToolStripMenuItem.Click, Data10ToolStripMenuItem.Click
