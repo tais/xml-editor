@@ -159,7 +159,10 @@ Public Class BaseDataForm
     End Sub
 
     Private Sub DataForm_Load(ByVal sender As Object, ByVal e As System.EventArgs) Handles Me.Load
-        Me.WindowState = FormWindowState.Normal
+        ' Don't force Normal here. MDI children share one maximized state, so when a grid (e.g. the
+        ' Items overview) is maximized and you open this detail form, WinForms keeps the new child
+        ' maximized to preserve that state - forcing Normal snapped the WHOLE MDI (the maximized
+        ' overview included) back down. Letting MDI manage it keeps the overview maximized.
         LoadingForm.Close()
     End Sub
 
