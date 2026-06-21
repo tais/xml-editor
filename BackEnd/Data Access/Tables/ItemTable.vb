@@ -332,12 +332,11 @@ Public Class ItemTable
         Dim a As Integer
         Dim da, aap As Integer
         Dim uicomments As Integer = 0
-        Dim fs As New FileStream(filePath, FileMode.Open, FileAccess.Read)
-
-        xmldoc.Load(fs)
+        ' Load via the path (not a FileStream) so XmlDocument opens and closes the file itself -
+        ' a parse failure no longer leaks the handle or leaves the game file locked against reload.
+        xmldoc.Load(filePath)
         xmlnode = xmldoc.GetElementsByTagName("ITEMLIST").Item(0)
         If xmlnode Is Nothing Then
-            fs.Close()
             Throw New DataLoadException("'" & fileName & "' is missing the expected <ITEMLIST> root element. It may be the wrong file or from a different game version.")
         End If
         For i = 0 To xmlnode.ChildNodes.Count - 1
@@ -403,8 +402,6 @@ Public Class ItemTable
             Next
             _table.Rows(rowIndex).EndEdit()
         Next
-        fs.Close()
-        fs.Dispose()
     End Sub
 
     Protected Overrides Sub WriteXml(ByVal table As DataTable, ByVal fileName As String)
