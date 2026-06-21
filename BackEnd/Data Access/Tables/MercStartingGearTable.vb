@@ -60,7 +60,7 @@ Public Class MercStartingGearTable
 
                         If _table.Columns.Contains(xmlnode3.Item(y).Name & a) Then
                             If _table.Columns(xmlnode3.Item(y).Name & a).DataType.Name = "Boolean" Then
-                                _table.Rows(rowIndex).Item(xmlnode3.Item(y).Name & a) = IIf(xmlnode3.Item(y).InnerText.Trim = 1, True, False)
+                                _table.Rows(rowIndex).Item(xmlnode3.Item(y).Name & a) = IIf(xmlnode3.Item(y).InnerText.Trim = "1", True, False)
                             Else
                                 _table.Rows(rowIndex).Item(xmlnode3.Item(y).Name & a) = xmlnode3.Item(y).InnerText.Trim
                             End If
@@ -69,7 +69,7 @@ Public Class MercStartingGearTable
                 Else
                     If _table.Columns.Contains(xmlElementName) Then
                         If _table.Columns(xmlElementName).DataType.Name = "Boolean" Then
-                            _table.Rows(rowIndex).Item(xmlElementName) = IIf(xmlElement.InnerText.Trim = 1, True, False)
+                            _table.Rows(rowIndex).Item(xmlElementName) = IIf(xmlElement.InnerText.Trim = "1", True, False)
                         Else
                             _table.Rows(rowIndex).Item(xmlElementName) = xmlElement.InnerText.Trim
                         End If

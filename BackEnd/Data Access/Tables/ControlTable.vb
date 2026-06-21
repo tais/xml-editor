@@ -85,7 +85,7 @@ Public Class ControlTable
                                 If _table.Columns.Contains(xmlChild2Name) Then
                                     If xmlChild2Name = "#comment" Then Continue For
                                     If _table.Columns(xmlChild2Name).DataType.Name = "Boolean" Then
-                                        _table.Rows(rowIndex).Item(xmlChild2Name) = IIf(xmlChild2Element.InnerText.Trim = 1, True, False)
+                                        _table.Rows(rowIndex).Item(xmlChild2Name) = IIf(xmlChild2Element.InnerText.Trim = "1", True, False)
                                     Else
                                         _table.Rows(rowIndex).Item(xmlChild2Name) = xmlChild2Element.InnerText.Trim
                                     End If
@@ -94,7 +94,7 @@ Public Class ControlTable
                         Else
                             If _table.Columns.Contains(xmlChildName) Then
                                 If _table.Columns(xmlChildName).DataType.Name = "Boolean" Then
-                                    _table.Rows(rowIndex).Item(xmlChildName) = IIf(xmlChildElement.InnerText.Trim = 1, True, False)
+                                    _table.Rows(rowIndex).Item(xmlChildName) = IIf(xmlChildElement.InnerText.Trim = "1", True, False)
                                 Else
                                     _table.Rows(rowIndex).Item(xmlChildName) = xmlChildElement.InnerText.Trim
                                 End If
@@ -104,7 +104,7 @@ Public Class ControlTable
                 Else
                     If _table.Columns.Contains(xmlElementName) Then
                         If _table.Columns(xmlElementName).DataType.Name = "Boolean" Then
-                            _table.Rows(rowIndex).Item(xmlElementName) = IIf(xmlElement.InnerText.Trim = 1, True, False)
+                            _table.Rows(rowIndex).Item(xmlElementName) = IIf(xmlElement.InnerText.Trim = "1", True, False)
                         Else
                             _table.Rows(rowIndex).Item(xmlElementName) = xmlElement.InnerText.Trim
                         End If
