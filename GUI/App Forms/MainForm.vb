@@ -145,7 +145,14 @@ Public Class MainForm
     End Sub
 
     Friend Function FormOpen(ByVal formText As String) As Boolean
+        ' Overviews are MDI children; detail/editor windows are owned top-level windows - check both.
         For Each f As Form In MdiChildren
+            If f.Text = formText Then
+                f.Activate()
+                Return True
+            End If
+        Next
+        For Each f As Form In Me.OwnedForms
             If f.Text = formText Then
                 f.Activate()
                 Return True
@@ -155,8 +162,17 @@ Public Class MainForm
     End Function
 
     Friend Sub ShowForm(ByVal frm As Form)
-        frm.MdiParent = Me
-        AddHandler frm.Resize, AddressOf ChildForm_Resized
+        If TypeOf frm Is GridForm Then
+            ' Overviews (item/data/lookup grids) stay as MDI children, contained inside the main window.
+            frm.MdiParent = Me
+            AddHandler frm.Resize, AddressOf ChildForm_Resized
+        Else
+            ' Detail/editor windows (item details, code makers, …) pop out as separate top-level
+            ' windows owned by the main form - they float free (movable anywhere / another monitor)
+            ' yet still close and minimise with the app. As non-MDI windows they also no longer
+            ' disturb a maximised grid behind them.
+            frm.Owner = Me
+        End If
         frm.Show()
     End Sub
 
@@ -201,8 +217,11 @@ Public Class MainForm
     End Sub
 
     Private Sub CloseAllToolStripMenuItem_Click(ByVal sender As Object, ByVal e As EventArgs) Handles CloseAllToolStripMenuItem.Click
-        ' Close all child forms of the parent.
+        ' Close all open child windows - both the MDI overviews and the popped-out editor windows.
         For Each ChildForm As Form In Me.MdiChildren
+            ChildForm.Close()
+        Next
+        For Each ChildForm As Form In Me.OwnedForms
             ChildForm.Close()
         Next
     End Sub
