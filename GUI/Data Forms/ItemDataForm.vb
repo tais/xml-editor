@@ -70,9 +70,16 @@ Public Class ItemDataForm
 
         PopulateGraphicsTypeComboBox()
 
-        GraphicTypeComboBox.SelectedIndex = _view(0)(Tables.Items.Fields.GraphicType)
-        GraphicIndexUpDown.Maximum = _dm.ItemImages.SmallItems(GraphicTypeComboBox.SelectedIndex).Length - 1
-        GraphicIndexUpDown.Value = _view(0)(Tables.Items.Fields.GraphicIndex)
+        ' Clamp to valid ranges so an item with an out-of-range GraphicType/GraphicIndex opens
+        ' (showing a default graphic) instead of throwing when it indexes the image arrays.
+        Dim gType As Integer = CInt(_view(0)(Tables.Items.Fields.GraphicType))
+        If GraphicTypeComboBox.Items.Count > 0 Then
+            If gType < 0 OrElse gType >= GraphicTypeComboBox.Items.Count Then gType = 0
+            GraphicTypeComboBox.SelectedIndex = gType
+            GraphicIndexUpDown.Maximum = Math.Max(0, _dm.ItemImages.SmallItems(gType).Length - 1)
+        End If
+        Dim gIndex As Integer = CInt(_view(0)(Tables.Items.Fields.GraphicIndex))
+        GraphicIndexUpDown.Value = Math.Min(GraphicIndexUpDown.Maximum, Math.Max(GraphicIndexUpDown.Minimum, gIndex))
 
         PopulateRobotSkillComboBoxes()
         RobotTargetingSkillGrantComboBox.SelectedIndex = _view(0)("RobotTargetingSkillGrant")
@@ -800,11 +807,13 @@ Public Class ItemDataForm
     End Sub
 
     Private Sub GraphicIndexUpDown_ValueChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles GraphicIndexUpDown.ValueChanged
+        If GraphicTypeComboBox.SelectedIndex < 0 Then Return
         LoadImages(GraphicTypeComboBox.SelectedIndex, GraphicIndexUpDown.Value)
     End Sub
 
     Private Sub GraphicTypeCombo_SelectedIndexChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles GraphicTypeComboBox.SelectedIndexChanged
-        GraphicIndexUpDown.Maximum = _dm.ItemImages.SmallItems(GraphicTypeComboBox.SelectedIndex).Length - 1
+        If GraphicTypeComboBox.SelectedIndex < 0 Then Return
+        GraphicIndexUpDown.Maximum = Math.Max(0, _dm.ItemImages.SmallItems(GraphicTypeComboBox.SelectedIndex).Length - 1)
         LoadImages(GraphicTypeComboBox.SelectedIndex, GraphicIndexUpDown.Value)
         ImageListBox.DataSource = _dm.ItemImages.BigItems(GraphicTypeComboBox.SelectedIndex)
     End Sub
