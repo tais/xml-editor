@@ -42,12 +42,12 @@ Public Class ControlTable
 
     Protected Overridable Sub LoadControlData(ByVal fileName As String, ByVal filePath As String)
         Dim xmldoc As New XmlDocument()
-        Dim fs As New FileStream(filePath, FileMode.Open, FileAccess.Read)
-        xmldoc.Load(fs)
+        ' Load via the path so XmlDocument opens/closes the file itself (no leaked handle / file lock
+        ' on a parse error).
+        xmldoc.Load(filePath)
 
         Dim xmlnode As XmlNode = xmldoc.GetElementsByTagName("INVENTORYLIST").Item(0)
         If xmlnode Is Nothing Then
-            fs.Close()
             Throw New DataLoadException("'" & fileName & "' is missing the expected <INVENTORYLIST> root element. It may be the wrong file or from a different game version.")
         End If
         Dim xmlParentNode As XmlNodeList
@@ -113,9 +113,6 @@ Public Class ControlTable
             Next
             _table.Rows(rowIndex).EndEdit()
         Next
-
-        fs.Close()
-        fs.Dispose()
     End Sub
 
 
