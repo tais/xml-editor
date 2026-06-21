@@ -947,6 +947,7 @@ Partial Class MainForm
         ' 
         DrugsItemFilterToolStripMenuItem.Name = "DrugsItemFilterToolStripMenuItem"
         DrugsItemFilterToolStripMenuItem.Size = New Size(201, 24)
+        DrugsItemFilterToolStripMenuItem.Text = "&Drugs"
         ' 
         ' TonsOfGunsToolStripMenuItem
         ' 
