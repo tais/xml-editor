@@ -32,5 +32,7 @@ Imports System.Runtime.InteropServices
 ' <Assembly: AssemblyVersion("1.0.*")> 
 
 
-<Assembly: AssemblyVersion("0.2.0.0")>
-<Assembly: AssemblyFileVersion("0.2.0.0")>
+' Default for local/CI builds. Release builds overwrite these with the git tag version
+' (see the "Stamp version into AssemblyInfo" step in .github/workflows/release.yml).
+<Assembly: AssemblyVersion("0.5.0.0")>
+<Assembly: AssemblyFileVersion("0.5.0.0")>
