@@ -54,42 +54,85 @@ Public Class MainForm
 
     Private Sub ValidateActiveData(ByVal sender As Object, ByVal e As EventArgs)
         System.Windows.Forms.Cursor.Current = Cursors.WaitCursor
-        Dim report As String
+        Dim issues As List(Of ValidationIssue)
         Try
-            report = DataValidator.Validate(_activeDataSet)
+            issues = DataValidator.Validate(_activeDataSet)
         Catch ex As Exception
             ErrorHandler.ShowError("Could not run data validation.", ex)
             Return
         Finally
             System.Windows.Forms.Cursor.Current = Cursors.Arrow
         End Try
-        ShowReportWindow("Validation - " & _activeDataSet.Name, report)
+
+        If issues.Count = 0 Then
+            MessageBox.Show("No reference problems found.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+        ShowValidationResults(issues)
     End Sub
 
-    ''' <summary>Shows read-only text in a simple scrollable window (built in code), owned by the
-    ''' main form so it pops out but closes with the app. Non-modal so it can stay open while editing.</summary>
-    Private Sub ShowReportWindow(ByVal title As String, ByVal text As String)
-        Dim box As New TextBox With {
-            .Multiline = True,
-            .ReadOnly = True,
-            .ScrollBars = ScrollBars.Both,
-            .WordWrap = False,
+    ''' <summary>Shows the validation issues as a navigable list - double-clicking a row opens that
+    ''' record in the editor (the item detail form, or the table's grid). Owned, non-modal.</summary>
+    Private Sub ShowValidationResults(ByVal issues As List(Of ValidationIssue))
+        Dim lv As New ListView With {
             .Dock = DockStyle.Fill,
-            .Font = New Font(FontFamily.GenericMonospace, 9.0F),
-            .Text = text
+            .View = View.Details,
+            .FullRowSelect = True,
+            .MultiSelect = False,
+            .GridLines = True
         }
-        box.Select(0, 0)
+        lv.Columns.Add("Table", 120)
+        lv.Columns.Add("Record", 230)
+        lv.Columns.Add("Field", 150)
+        lv.Columns.Add("Value", 60)
+        lv.Columns.Add("Problem", 170)
 
+        For Each iss As ValidationIssue In issues
+            Dim lvi As New ListViewItem(iss.TableName)
+            lvi.SubItems.Add((iss.RecordId & " " & iss.RecordName).Trim())
+            lvi.SubItems.Add(iss.ColumnName)
+            lvi.SubItems.Add(iss.Value)
+            lvi.SubItems.Add(iss.Problem)
+            lvi.Tag = iss
+            lv.Items.Add(lvi)
+        Next
+        AddHandler lv.DoubleClick, AddressOf ValidationResult_DoubleClick
+
+        Dim status As New Label With {
+            .Dock = DockStyle.Bottom,
+            .Height = 26,
+            .TextAlign = ContentAlignment.MiddleLeft,
+            .Text = "  " & issues.Count & " issue(s).  Double-click a row to open that record."
+        }
         Dim frm As New Form With {
-            .Text = title,
-            .Width = 720,
+            .Text = "Validation - " & _activeDataSet.Name,
+            .Width = 780,
             .Height = 520,
             .StartPosition = FormStartPosition.CenterParent,
             .MinimizeBox = False
         }
-        frm.Controls.Add(box)
+        frm.Controls.Add(lv)
+        frm.Controls.Add(status)
         frm.Owner = Me
         frm.Show()
+    End Sub
+
+    Private Sub ValidationResult_DoubleClick(ByVal sender As Object, ByVal e As EventArgs)
+        Dim lv As ListView = TryCast(sender, ListView)
+        If lv Is Nothing OrElse lv.SelectedItems.Count = 0 Then Return
+        Dim iss As ValidationIssue = TryCast(lv.SelectedItems(0).Tag, ValidationIssue)
+        If iss Is Nothing Then Return
+        Try
+            If iss.TableName = Tables.Items.Name Then
+                Dim id As Integer
+                If Integer.TryParse(iss.RecordId, id) Then ItemDataForm.Open(_activeDataSet, id, iss.RecordName)
+            Else
+                ' Other tables: open that table's grid so the record can be found.
+                ShowDataGridForm(_activeDataSet, FormatFormText(iss.TableName), iss.TableName)
+            End If
+        Catch ex As Exception
+            ErrorHandler.ShowError("Could not open the record.", ex)
+        End Try
     End Sub
 
     Private Sub RemoveUnusedLanguageSpecificAmmoStringMenuItems()

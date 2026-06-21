@@ -1,30 +1,33 @@
 Imports System.Data
-Imports System.Text
+
+''' <summary>One dangling-reference problem found by <see cref="DataValidator"/>.</summary>
+Public Class ValidationIssue
+    Public Property TableName As String
+    Public Property FileName As String
+    Public Property RecordId As String
+    Public Property RecordName As String
+    Public Property ColumnName As String
+    Public Property Value As String
+    Public Property Problem As String
+End Class
 
 ''' <summary>
-''' Read-only data sanity checks for a loaded data set. Reports lookup/reference values that
-''' point at rows which don't exist (e.g. an item referencing an AMMOTYPE or ATTACHMENT id that
-''' isn't defined) - the kind of dangling reference that loads fine but can break the game.
-''' Purely diagnostic: it never modifies any data.
+''' Read-only data sanity checks for a loaded data set. Reports lookup/reference values that point
+''' at rows which don't exist (e.g. an item referencing an AMMOTYPE or ATTACHMENT id that isn't
+''' defined) - the kind of dangling reference that loads fine but can break the game. Purely
+''' diagnostic: it never modifies any data.
 ''' </summary>
 Public Class DataValidator
 
-    ' Columns whose names are tried (in order) to give a friendlier label for a flagged row.
+    ' Columns tried (in order) to give a friendly name for a flagged record.
     Private Shared ReadOnly NameColumns As String() = {"szLongItemName", "szItemName", "Name", "ShortName", "name"}
 
-    ''' <summary>Validates the data set behind the given manager and returns a human-readable report.</summary>
-    Public Shared Function Validate(ByVal dm As DataManager) As String
+    ''' <summary>Scans the data set behind the manager and returns the issues found (empty if none).</summary>
+    Public Shared Function Validate(ByVal dm As DataManager) As List(Of ValidationIssue)
         Dim ds As DataSet = dm.Database.DataSet
-        Dim report As New StringBuilder()
-        Dim issueCount As Integer = 0
-
-        report.AppendLine("Validation report - " & dm.Name)
-        report.AppendLine(New String("="c, 60))
-        report.AppendLine()
+        Dim issues As New List(Of ValidationIssue)
 
         For Each t As DataTable In ds.Tables
-            Dim tableIssues As New List(Of String)
-
             For Each c As DataColumn In t.Columns
                 Dim lookupName As String = c.GetStringProperty(ColumnProperty.Lookup_Table)
                 If String.IsNullOrEmpty(lookupName) OrElse Not ds.Tables.Contains(lookupName) Then Continue For
@@ -32,12 +35,9 @@ Public Class DataValidator
                 Dim valueColumn As String = c.GetStringProperty(ColumnProperty.Lookup_ValueColumn)
                 Dim lookupTable As DataTable = ds.Tables(lookupName)
                 If String.IsNullOrEmpty(valueColumn) OrElse Not lookupTable.Columns.Contains(valueColumn) Then Continue For
-                ' Skip when the lookup table is empty/not loaded - otherwise every value would be
-                ' flagged as "no such", flooding the report with false positives.
+                ' Skip when the lookup table is empty/not loaded, else every value would look invalid.
                 If lookupTable.Rows.Count = 0 Then Continue For
 
-                ' A column can be a self-reference (e.g. default attachments point back at ITEM);
-                ' that is fine and is handled the same way - just compare against the lookup's values.
                 Dim validValues As New HashSet(Of String)
                 For Each lr As DataRow In lookupTable.Rows
                     If lr.RowState <> DataRowState.Deleted Then validValues.Add(lr(valueColumn).ToString())
@@ -49,54 +49,43 @@ Public Class DataValidator
                     If IsDBNull(v) Then Continue For
 
                     Dim vs As String = v.ToString()
-                    ' Skip "none" sentinels (0 / negative) and blanks to avoid false positives.
+                    ' Skip blanks and "none" sentinels (0 / negative) to avoid false positives.
                     Dim num As Double
                     If String.IsNullOrEmpty(vs) Then Continue For
                     If Double.TryParse(vs, num) AndAlso num <= 0 Then Continue For
 
                     If Not validValues.Contains(vs) Then
-                        tableIssues.Add("  row " & RowLabel(t, r) & ": '" & c.ColumnName & "' = " & vs & "  ->  no such " & lookupName)
-                        issueCount += 1
+                        issues.Add(New ValidationIssue With {
+                            .TableName = t.TableName,
+                            .FileName = t.GetStringProperty(TableProperty.FileName),
+                            .RecordId = RecordId(t, r),
+                            .RecordName = RecordName(t, r),
+                            .ColumnName = c.ColumnName,
+                            .Value = vs,
+                            .Problem = "no such " & lookupName
+                        })
                     End If
                 Next
             Next
-
-            If tableIssues.Count > 0 Then
-                Dim fileName As String = t.GetStringProperty(TableProperty.FileName)
-                report.AppendLine(t.TableName & If(String.IsNullOrEmpty(fileName), "", " (" & fileName & ")") & ":")
-                For Each issue As String In tableIssues
-                    report.AppendLine(issue)
-                Next
-                report.AppendLine()
-            End If
         Next
-
-        report.AppendLine(New String("-"c, 60))
-        If issueCount = 0 Then
-            report.AppendLine("No reference problems found.")
-        Else
-            report.AppendLine(issueCount & " issue(s) found.")
-        End If
-        Return report.ToString()
+        Return issues
     End Function
 
-    ''' <summary>Best-effort friendly label for a row: primary-key value plus a name column if present.</summary>
-    Private Shared Function RowLabel(ByVal t As DataTable, ByVal r As DataRow) As String
-        Dim label As String = ""
+    Private Shared Function RecordId(ByVal t As DataTable, ByVal r As DataRow) As String
         If t.PrimaryKey IsNot Nothing AndAlso t.PrimaryKey.Length > 0 Then
             Try
-                label = r(t.PrimaryKey(0)).ToString()
+                Return r(t.PrimaryKey(0)).ToString()
             Catch
             End Try
         End If
+        Return ""
+    End Function
+
+    Private Shared Function RecordName(ByVal t As DataTable, ByVal r As DataRow) As String
         For Each nameCol As String In NameColumns
-            If t.Columns.Contains(nameCol) Then
-                Dim nm As String = r(t.Columns(nameCol)).ToString()
-                If Not String.IsNullOrEmpty(nm) Then label &= " '" & nm & "'"
-                Exit For
-            End If
+            If t.Columns.Contains(nameCol) Then Return r(t.Columns(nameCol)).ToString()
         Next
-        Return label
+        Return ""
     End Function
 
 End Class
