@@ -43,6 +43,28 @@ Public Class MainForm
             _client.BackgroundImageLayout = ImageLayout.Stretch
         End If
         StatusLabel.Text = DisplayText.Welcome
+
+        ' Tools menu (built in code) - read-only data validation.
+        Dim toolsMenu As New ToolStripMenuItem("Tools")
+        Dim validateItem As New ToolStripMenuItem("Validate active data...")
+        AddHandler validateItem.Click, AddressOf ValidateActiveData
+        toolsMenu.DropDownItems.Add(validateItem)
+        MenuStrip.Items.Insert(MenuStrip.Items.Count - 1, toolsMenu)
+    End Sub
+
+    Private Sub ValidateActiveData(ByVal sender As Object, ByVal e As EventArgs)
+        System.Windows.Forms.Cursor.Current = Cursors.WaitCursor
+        Try
+            Dim report As String = DataValidator.Validate(_activeDataSet)
+            Dim path As String = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "JA2-XML-Editor-ValidationReport.txt")
+            System.IO.File.WriteAllText(path, report)
+            ' Open the report in the default text viewer.
+            System.Diagnostics.Process.Start(New System.Diagnostics.ProcessStartInfo(path) With {.UseShellExecute = True})
+        Catch ex As Exception
+            ErrorHandler.ShowError("Could not run data validation.", ex)
+        Finally
+            System.Windows.Forms.Cursor.Current = Cursors.Arrow
+        End Try
     End Sub
 
     Private Sub RemoveUnusedLanguageSpecificAmmoStringMenuItems()
