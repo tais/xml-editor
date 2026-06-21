@@ -56,6 +56,19 @@ jobs:
           "version_nov=$nov" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           Write-Host "Building release $v (assembly version $nov)"
 
+      # Stamp the release version into the assembly so the splash / About box show it instead of
+      # the hardcoded AssemblyInfo value. GenerateAssemblyInfo is off, so rewrite AssemblyInfo.vb.
+      - name: Stamp version into AssemblyInfo
+        shell: pwsh
+        run: |
+          $core = ("${{ steps.ver.outputs.version_nov }}" -split '-')[0]
+          $parts = @($core.Split('.'))
+          while ($parts.Count -lt 4) { $parts += '0' }
+          $v4 = ($parts[0..3] -join '.')
+          Write-Host "Stamping assembly version $v4"
+          $f = 'GUI/My Project/AssemblyInfo.vb'
+          (Get-Content $f) -replace 'AssemblyVersion\("[^"]*"\)', "AssemblyVersion(""$v4"")" -replace 'AssemblyFileVersion\("[^"]*"\)', "AssemblyFileVersion(""$v4"")" | Set-Content $f
+
       # Two single-file builds (no trimming - WinForms relies on reflection):
       #  - framework-dependent: small, needs the .NET 9 Desktop Runtime installed.
       #  - self-contained: large, bundles the runtime, no install needed.
