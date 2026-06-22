@@ -28,10 +28,13 @@ Public Class ItemTransformationTable
         Dim x As Integer
         Dim da As Integer
         Dim uiComments As Integer = 0
-        Dim fs As New FileStream(filePath, FileMode.Open, FileAccess.Read)
-
-        xmldoc.Load(fs)
+        ' Load via the path so XmlDocument opens/closes the file itself - the old code opened a
+        ' FileStream and never closed it (leaked handle / file lock).
+        xmldoc.Load(filePath)
         xmlnode = xmldoc.GetElementsByTagName("TRANSFORMATIONS_LIST").Item(0)
+        If xmlnode Is Nothing Then
+            Throw New DataLoadException("'" & fileName & "' is missing the expected <TRANSFORMATIONS_LIST> root element. It may be the wrong file or from a different game version.")
+        End If
         For i = 0 To xmlnode.ChildNodes.Count - 1
             If xmlnode.ChildNodes.Item(i).Name = "#comment" Then
                 uiComments = uiComments + 1
