@@ -56,6 +56,9 @@ Module Main
             If Not String.IsNullOrEmpty(pickedDir) Then
                 IniFile.SetSingleDataDirectory(pickedDir)
                 IniFile.SaveDataDirectory("XMLEditorInit.xml", pickedDir)
+            Else
+                ' Cancelling the startup picker closes the editor (nothing was chosen to edit).
+                Return
             End If
 
             Dim useWorkingDir As Boolean = IniFile.UseWorkingDirectory
@@ -99,7 +102,7 @@ Module Main
 
             If GameDataCount = 0 Then
                 Splash.Hide()
-                Throw New DataLoadException("No data folder was selected, so there is nothing to edit. Restart the editor and choose your JA2 1.13 data folder (the one containing the XML data, e.g. Data-1.13).")
+                Throw New DataLoadException("The selected data folder does not contain any loadable JA2 1.13 data (no TableData with XML files was found). Restart the editor and choose a different folder.")
             End If
 
             Splash.UpdateLoadingText(DisplayText.LoadingSettings)
