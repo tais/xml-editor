@@ -32,7 +32,35 @@ Module Main
             Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture("en-US")
             Thread.CurrentThread.CurrentUICulture = New CultureInfo("en-US")
 
-            IniFile.ReadFile("XMLEditorInit.xml")
+            ' Read the init file for defaults; a missing/invalid file is no longer fatal because the
+            ' startup folder picker (below) can supply the data folder.
+            Try
+                IniFile.ReadFile("XMLEditorInit.xml")
+            Catch ex As DataLoadException
+            End Try
+
+            ' Always ask which data folder to open. Prefer a list built from the vfs_config*.ini files
+            ' in the editor's own folder (the JA2 game root); if none are found, fall back to a plain
+            ' folder browser. The chosen folder replaces the configured directories and is remembered.
+            Dim pickedDir As String
+            Dim profiles As List(Of DataProfile) = VfsScanner.Scan(Application.StartupPath)
+            If profiles.Count = 0 Then
+                Dim cwd As String = System.IO.Directory.GetCurrentDirectory()
+                If Not String.Equals(cwd, Application.StartupPath, StringComparison.OrdinalIgnoreCase) Then profiles = VfsScanner.Scan(cwd)
+            End If
+            If profiles.Count > 0 Then
+                pickedDir = ChooseDataProfile(profiles)
+            Else
+                pickedDir = ChooseDataDirectory()
+            End If
+            If Not String.IsNullOrEmpty(pickedDir) Then
+                IniFile.SetSingleDataDirectory(pickedDir)
+                IniFile.SaveDataDirectory("XMLEditorInit.xml", pickedDir)
+            Else
+                ' Cancelling the startup picker closes the editor (nothing was chosen to edit).
+                Return
+            End If
+
             Dim useWorkingDir As Boolean = IniFile.UseWorkingDirectory
 
             If My.Application.Info.Version.Major <> My.Settings.Last_Version_Major OrElse
@@ -72,6 +100,11 @@ Module Main
                 End If
             Next
 
+            If GameDataCount = 0 Then
+                Splash.Hide()
+                Throw New DataLoadException("The selected data folder does not contain any loadable JA2 1.13 data (no TableData with XML files was found). Restart the editor and choose a different folder.")
+            End If
+
             Splash.UpdateLoadingText(DisplayText.LoadingSettings)
             SettingsUtility.LoadSettings()
 
@@ -91,6 +124,105 @@ Module Main
             ErrorHandler.ShowError(DisplayText.UnhandledError, ex)
         End Try
     End Sub
+
+    ''' <summary>Modal list picker over the data sets found in the vfs_config files. Returns the
+    ''' chosen folder path, a browsed path (via the Browse button), or Nothing if cancelled. Any
+    ''' failure falls back to the plain folder browser.</summary>
+    Private Function ChooseDataProfile(ByVal profiles As List(Of DataProfile)) As String
+        Dim browsed As String = Nothing
+        Try
+            Using frm As New Form()
+                frm.Text = "Choose the JA2 1.13 data set to edit"
+                frm.ClientSize = New System.Drawing.Size(560, 380)
+                frm.StartPosition = FormStartPosition.CenterScreen
+                frm.FormBorderStyle = FormBorderStyle.FixedDialog
+                frm.MinimizeBox = False
+                frm.MaximizeBox = False
+
+                Dim list As New ListBox With {.Dock = DockStyle.Fill, .IntegralHeight = False}
+                For Each p As DataProfile In profiles
+                    list.Items.Add(p)
+                Next
+
+                ' Pre-select the last-used folder if it is in the list.
+                Dim last As String = ""
+                Try
+                    If Not String.IsNullOrEmpty(IniFile.DataDirectory(0)) Then last = System.IO.Path.GetFullPath(IniFile.DataDirectory(0)).TrimEnd("\"c)
+                Catch
+                End Try
+                For i As Integer = 0 To profiles.Count - 1
+                    If String.Equals(profiles(i).FolderPath.TrimEnd("\"c), last, StringComparison.OrdinalIgnoreCase) Then
+                        list.SelectedIndex = i
+                        Exit For
+                    End If
+                Next
+                If list.SelectedIndex < 0 AndAlso list.Items.Count > 0 Then list.SelectedIndex = 0
+
+                Dim lbl As New Label With {
+                    .Text = "Data sets found from your vfs_config files. Pick one, or Browse for another folder:",
+                    .Dock = DockStyle.Top, .Height = 38, .Padding = New Padding(10, 10, 10, 0)}
+
+                Dim panel As New Panel With {.Dock = DockStyle.Bottom, .Height = 48}
+                Dim okBtn As New Button With {.Text = "Open", .DialogResult = DialogResult.OK, .Width = 90, .Top = 9, .Left = 560 - 3 * 96 - 8}
+                Dim browseBtn As New Button With {.Text = "Browse...", .Width = 90, .Top = 9, .Left = 560 - 2 * 96 - 8}
+                Dim cancelBtn As New Button With {.Text = "Cancel", .DialogResult = DialogResult.Cancel, .Width = 90, .Top = 9, .Left = 560 - 96 - 8}
+                AddHandler browseBtn.Click, Sub()
+                                                Dim b As String = ChooseDataDirectory()
+                                                If Not String.IsNullOrEmpty(b) Then
+                                                    browsed = b
+                                                    frm.DialogResult = DialogResult.OK
+                                                    frm.Close()
+                                                End If
+                                            End Sub
+                AddHandler list.DoubleClick, Sub() okBtn.PerformClick()
+                panel.Controls.Add(okBtn)
+                panel.Controls.Add(browseBtn)
+                panel.Controls.Add(cancelBtn)
+
+                frm.Controls.Add(list)
+                frm.Controls.Add(lbl)
+                frm.Controls.Add(panel)
+                frm.AcceptButton = okBtn
+                frm.CancelButton = cancelBtn
+
+                If frm.ShowDialog() = DialogResult.OK Then
+                    If Not String.IsNullOrEmpty(browsed) Then Return browsed
+                    Dim sel As DataProfile = TryCast(list.SelectedItem, DataProfile)
+                    If sel IsNot Nothing Then Return sel.FolderPath
+                End If
+            End Using
+            Return Nothing
+        Catch
+            ' On any failure, fall back to the plain folder browser.
+            Return ChooseDataDirectory()
+        End Try
+    End Function
+
+    ''' <summary>Shows a folder picker for the data directory, pre-selected to the current/last one.
+    ''' Returns the chosen path, or Nothing if cancelled / on any error (the caller then falls back
+    ''' to whatever the init file configured).</summary>
+    Private Function ChooseDataDirectory() As String
+        Try
+            Using dlg As New FolderBrowserDialog()
+                dlg.Description = "Select your JA2 1.13 data folder (the folder that contains the XML data, e.g. ...\Data-1.13)."
+                dlg.ShowNewFolderButton = False
+                Dim current As String = IniFile.DataDirectory(0)
+                If Not String.IsNullOrEmpty(current) Then
+                    Try
+                        Dim abs As String = System.IO.Path.GetFullPath(current)
+                        If System.IO.Directory.Exists(abs) Then dlg.SelectedPath = abs
+                    Catch
+                    End Try
+                End If
+                If dlg.ShowDialog() = DialogResult.OK AndAlso Not String.IsNullOrEmpty(dlg.SelectedPath) Then
+                    Return dlg.SelectedPath
+                End If
+            End Using
+        Catch
+            ' Picker unavailable / failed - fall back to the init-file configuration.
+        End Try
+        Return Nothing
+    End Function
 
     Private Sub DB_AfterLoadAll(sender As XmlDB)
         Splash.UpdateLoadingText(String.Format(DisplayText.BuildingItemTable, sender.DataManager.Name))

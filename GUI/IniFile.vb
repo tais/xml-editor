@@ -147,4 +147,37 @@ Public Class IniFile
         End Try
     End Sub
 
+    ''' <summary>Use a single chosen data folder (from the startup picker), replacing whatever the
+    ''' init file configured: set directory 1 and clear the rest so only this folder is loaded.</summary>
+    Public Shared Sub SetSingleDataDirectory(ByVal path As String)
+        If Not path.EndsWith("\") Then path &= "\"
+        dataDir(0) = path
+        For i As Integer = 1 To MaxDataDir
+            dataDir(i) = ""
+        Next
+    End Sub
+
+    ''' <summary>Persist the chosen data folder back to the init file's Data_Directory_1 so it is
+    ''' pre-selected next launch. Best-effort - never blocks startup, preserves the other settings.</summary>
+    Public Shared Sub SaveDataDirectory(ByVal fileName As String, ByVal path As String)
+        Try
+            Dim doc As New Xml.XmlDocument()
+            If IO.File.Exists(fileName) Then doc.Load(fileName)
+            Dim root As Xml.XmlElement = doc.DocumentElement
+            If root Is Nothing Then
+                root = doc.CreateElement("XMLEditor")
+                doc.AppendChild(root)
+            End If
+            Dim node As Xml.XmlNode = root.SelectSingleNode("Data_Directory_1")
+            If node Is Nothing Then
+                node = doc.CreateElement("Data_Directory_1")
+                root.AppendChild(node)
+            End If
+            node.InnerText = path
+            doc.Save(fileName)
+        Catch
+            ' Best-effort persistence; ignore failures (e.g. a read-only folder).
+        End Try
+    End Sub
+
 End Class
