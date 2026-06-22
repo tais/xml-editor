@@ -32,7 +32,22 @@ Module Main
             Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture("en-US")
             Thread.CurrentThread.CurrentUICulture = New CultureInfo("en-US")
 
-            IniFile.ReadFile("XMLEditorInit.xml")
+            ' Read the init file for defaults; a missing/invalid file is no longer fatal because the
+            ' startup folder picker (below) can supply the data folder.
+            Try
+                IniFile.ReadFile("XMLEditorInit.xml")
+            Catch ex As DataLoadException
+            End Try
+
+            ' Always ask which data folder to open (pre-selected to the last one). Picking a folder
+            ' replaces the configured directories with that single folder and remembers it; cancelling
+            ' falls back to whatever the init file configured.
+            Dim pickedDir As String = ChooseDataDirectory()
+            If Not String.IsNullOrEmpty(pickedDir) Then
+                IniFile.SetSingleDataDirectory(pickedDir)
+                IniFile.SaveDataDirectory("XMLEditorInit.xml", pickedDir)
+            End If
+
             Dim useWorkingDir As Boolean = IniFile.UseWorkingDirectory
 
             If My.Application.Info.Version.Major <> My.Settings.Last_Version_Major OrElse
@@ -72,6 +87,11 @@ Module Main
                 End If
             Next
 
+            If GameDataCount = 0 Then
+                Splash.Hide()
+                Throw New DataLoadException("No data folder was selected, so there is nothing to edit. Restart the editor and choose your JA2 1.13 data folder (the one containing the XML data, e.g. Data-1.13).")
+            End If
+
             Splash.UpdateLoadingText(DisplayText.LoadingSettings)
             SettingsUtility.LoadSettings()
 
@@ -91,6 +111,32 @@ Module Main
             ErrorHandler.ShowError(DisplayText.UnhandledError, ex)
         End Try
     End Sub
+
+    ''' <summary>Shows a folder picker for the data directory, pre-selected to the current/last one.
+    ''' Returns the chosen path, or Nothing if cancelled / on any error (the caller then falls back
+    ''' to whatever the init file configured).</summary>
+    Private Function ChooseDataDirectory() As String
+        Try
+            Using dlg As New FolderBrowserDialog()
+                dlg.Description = "Select your JA2 1.13 data folder (the folder that contains the XML data, e.g. ...\Data-1.13)."
+                dlg.ShowNewFolderButton = False
+                Dim current As String = IniFile.DataDirectory(0)
+                If Not String.IsNullOrEmpty(current) Then
+                    Try
+                        Dim abs As String = System.IO.Path.GetFullPath(current)
+                        If System.IO.Directory.Exists(abs) Then dlg.SelectedPath = abs
+                    Catch
+                    End Try
+                End If
+                If dlg.ShowDialog() = DialogResult.OK AndAlso Not String.IsNullOrEmpty(dlg.SelectedPath) Then
+                    Return dlg.SelectedPath
+                End If
+            End Using
+        Catch
+            ' Picker unavailable / failed - fall back to the init-file configuration.
+        End Try
+        Return Nothing
+    End Function
 
     Private Sub DB_AfterLoadAll(sender As XmlDB)
         Splash.UpdateLoadingText(String.Format(DisplayText.BuildingItemTable, sender.DataManager.Name))
